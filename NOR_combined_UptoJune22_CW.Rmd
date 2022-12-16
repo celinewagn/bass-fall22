@@ -1,0 +1,2488 @@
+---
+title: "NORcombine_Up to June22_ZYH"
+author: "Celine Wang"
+date: "September 2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(patternplot)
+library(lme4)
+library(visreg)
+library(tidyr)
+library(magrittr) 
+library(dplyr)
+library(reshape2)
+library(ggpubr)
+library(ggridges)
+library(rstatix)
+library(tidyverse)
+library(tidyr)
+library(EnvStats)
+library(emmeans)
+library(effectsize)
+library(knitr)
+library(janitor)
+```
+
+```{r}
+masterFile='C:/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/NORcombined_Master_15Sep22_ZYH.csv'
+outpath='C:Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/NOR_Final/'
+info<-read.csv(masterFile, header=TRUE)
+df<-data.frame(info)
+
+#Combining correct age csv sheets
+ageFile='C:/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/qial_animals_111422.csv'
+dobinfo<-read_csv(ageFile, col_names=TRUE)
+dobdf<-data.frame(dobinfo)
+#Combined <- merge(dobdf, df, by = "ID" )
+combined <- left_join(df, dobdf, by = c("ID" = "CIVM_ID"))
+write.csv(Combined, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/NOR_Final/combinedinfo.csv", row.names = TRUE)
+
+
+```
+
+```{r}
+df2<-subset(df, (APOE=='E22'))
+df3<-subset(df, (APOE=='E33'))
+df4<-subset(df, (APOE=='E44'))
+df5<-subset(df, (APOE=='E2HN'))
+df6<-subset(df, (APOE=='E3HN'))
+df7<-subset(df, (APOE=='E4HN'))
+dfAll<- rbind(df2, df3, df4, df5, df6, df7)
+dfBase<-rbind(df2, df3, df4) #Basic subset
+dfHN<-rbind(df5, df6, df7) #Hn strain subset
+```
+
+
+```{r}
+dfOpen<-subset(dfAll, (Stage=='openfield'))
+dfBaseOpen<-subset(dfBase, (Stage=='openfield'))
+dfHNOpen<-subset(dfHN, (Stage=='openfield'))
+
+dfOpen<-droplevels(dfOpen)
+dfBaseOpen<-droplevels(dfBaseOpen)
+dfHNOpen<-droplevels(dfHNOpen)
+```
+
+```{r}
+dfOpen$Diet<- as.factor (dfOpen$Diet)
+dfOpen$Sex<- as.factor (dfOpen$Sex)
+dfOpen$APOE<-as.factor (dfOpen$APOE)
+
+dfBaseOpen$Diet<- as.factor (dfBaseOpen$Diet)
+dfBaseOpen$Sex<- as.factor (dfBaseOpen$Sex)
+dfBaseOpen$APOE<-as.factor (dfBaseOpen$APOE)
+
+dfHNOpen$Diet<- as.factor (dfHNOpen$Diet)
+dfHNOpen$Sex<- as.factor (dfHNOpen$Sex)
+dfHNOpen$APOE<-as.factor (dfHNOpen$APOE)
+
+```
+
+```{r}
+dfYMC<-subset(dfOpen, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='Control'))
+dfYFC<-subset(dfOpen, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='Control'))
+dfYMH<-subset(dfOpen, (Age_Cat=='Young') &(Sex=='Male') & (Diet=='HFD'))
+dfYFH<-subset(dfOpen, (Age_Cat=='Young') &(Sex=='Female') & (Diet=='HFD'))
+dfOMC<-subset(dfOpen, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='Control'))
+dfOFC<-subset(dfOpen, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='Control'))
+dfOMH<-subset(dfOpen, (Age_Cat=='Old') &(Sex=='Male') & (Diet=='HFD'))
+dfOFH<-subset(dfOpen, (Age_Cat=='Old') &(Sex=='Female') & (Diet=='HFD'))
+
+dfYMCB<-subset(dfBaseOpen, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='Control'))
+dfYFCB<-subset(dfBaseOpen, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='Control'))
+dfYMHB<-subset(dfBaseOpen, (Age_Cat=='Young') &(Sex=='Male') & (Diet=='HFD'))
+dfYFHB<-subset(dfBaseOpen, (Age_Cat=='Young') &(Sex=='Female') & (Diet=='HFD'))
+dfOMCB<-subset(dfBaseOpen, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='Control'))
+dfOFCB<-subset(dfBaseOpen, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='Control'))
+dfOMHB<-subset(dfBaseOpen, (Age_Cat=='Old') &(Sex=='Male') & (Diet=='HFD'))
+dfOFHB<-subset(dfBaseOpen, (Age_Cat=='Old') &(Sex=='Female') & (Diet=='HFD'))
+
+dfYMCHN<-subset(dfHNOpen, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='Control'))
+dfYFCHN<-subset(dfHNOpen, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='Control'))
+dfYMHHN<-subset(dfHNOpen, (Age_Cat=='Young') &(Sex=='Male') & (Diet=='HFD'))
+dfYFHHN<-subset(dfHNOpen, (Age_Cat=='Young') &(Sex=='Female') & (Diet=='HFD'))
+dfOMCHN<-subset(dfHNOpen, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='Control'))
+dfOFCHN<-subset(dfHNOpen, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='Control'))
+dfOMHHN<-subset(dfHNOpen, (Age_Cat=='Old') &(Sex=='Male') & (Diet=='HFD'))
+dfOFHHN<-subset(dfHNOpen, (Age_Cat=='Old') &(Sex=='Female') & (Diet=='HFD'))
+
+
+``` 
+
+```{r}
+dfYMTD<- rbind(dfYMC, dfYMH)
+dfYFTD<- rbind(dfYFC, dfYFH)
+dfOMTD<- rbind(dfOMC, dfOMH)
+dfOFTD<- rbind(dfOFC, dfOFH)
+dfYTD<- rbind(dfYMTD, dfYFTD)
+dfOTD<- rbind(dfOMTD, dfOFTD)
+
+dfYMTDB<- rbind(dfYMCB, dfYMHB)
+dfYFTDB<- rbind(dfYFCB, dfYFHB)
+dfOMTDB<- rbind(dfOMCB, dfOMHB)
+dfOFTDB<- rbind(dfOFCB, dfOFHB)
+dfYTDB<- rbind(dfYMTDB, dfYFTDB)
+dfOTDB<- rbind(dfOMTDB, dfOFTDB)
+
+dfYMTDHN<- rbind(dfYMCHN, dfYMHHN)
+dfYFTDHN<- rbind(dfYFCHN, dfYFHHN)
+dfOMTDHN<- rbind(dfOMCHN, dfOMHHN)
+dfOFTDHN<- rbind(dfOFCHN, dfOFHHN)
+dfYTDHN<- rbind(dfYMTDHN, dfYFTDHN)
+dfOTDHN<- rbind(dfOMTDHN, dfOFTDHN)
+
+
+```
+
+##dfOpen all stat (Total distance)
+```{r}
+a1<- stats:: aov(Total.Distance ~ APOE*Sex*Age_Cat*Diet, data=dfOpen)
+summary(a1)
+TukeyHSD(a1, "Sex")
+
+```
+##dfOpen all visualization
+ggplot(dfOpen, aes(x=Diet, y=Total.Distance, group=APOE)) + 
+  geom_violin(aes(fill=APOE))+ facet_grid(APOE)
+  + stat_summary(fun=mean, geom="point", shape=23, size=2)+ geom_boxplot(width=0.1)+ geom_dotplot(binaxis='y', stackdir='center', dotsize=0.5)
+ggsave(paste(outpath, 'openfieldtotaldistApoeSexDietviolin9.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+       
+```{r}
+oHN<- lm(Total.Distance ~ APOE*Sex*Age_Cat*Diet, data=dfHNOpen)
+anova(oHN)
+oHN_anova <- as.data.frame(anova(oHN))
+
+library(effectsize)
+eta=eta_squared(oHN)
+eta<- as.data.frame(eta_squared(oHN))
+cohensHN<- as.data.frame(cohens_f(oHN))
+HNadjusted <- as.data.frame(p.adjust(oHN_anova$`Pr(>F)`, method = "fdr"))
+
+# totalll<- cbind(oHN_anova, eta)
+#p.adjust cohens f is for ANOVA, and then hedges_g (cohen's d prob for mine) tukey_hsd(res.aov)
+
+#
+
+write.csv(cohensHN, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/HN_analysis/HN_cohens.csv" )
+write.csv(eta, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/HN_analysis/HN_anova_eff.csv" )
+write.csv(oHN_anova, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/HN_analysis/HN_anova.csv")
+write.csv(CI, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/HN_analysis/HN_CI.csv")
+write.csv(HNadjusted, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/HN_analysis/HN_adj_pval.csv")
+summary(oHN)
+
+posthoc1hn <- emmeans(oHN, list(pairwise~APOE*Sex*Age_Cat*Diet), adjust="tukey")
+posthoc1hn[2]
+pairwises_allHN <- ((as.data.frame(posthoc1hn[2]))) # $'pairwise differences of APOE, sex, age, diet'
+fdr_adjusted_pvals <- p.adjust((pairwises_allHN[ , "pairwise.differences.of.APOE..Sex..Age_Cat..Diet.p.value"]), method = "fdr") 
+pairwisepvals <- (as.data.frame(fdr_adjusted_pvals))
+pairwises_allHN <- cbind(pairwises_allHN, pairwisepvals)
+
+sig_pairwises <- filter(pairwises_allHN, fdr_adjusted_pvals <= 0.05)
+
+write.csv(sig_pairwises, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/HN_analysis/sig_pairwises.csv" )
+write.csv(pairwises_allHN, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/HN_analysis/pairwises.csv")
+summary(oHN)
+
+write.csv(posthoc1HN, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/HN_posthoc1.csv", row.names = TRUE)
+
+posthoc2hn <- emmeans(oHN, list(pairwise~APOE*Sex*Age_Cat|Diet), adjust="tukey") 
+posthoc2HN <- (as.data.frame(posthoc2hn) 
+                                ) #$'pairwise differences of APOE, sex, age | diet'
+write.csv(posthoc2HN, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/HN_posthoc2.csv", row.names = TRUE)
+
+#color palette for graphs:
+cp <- c("#0072B2", "#D55")
+
+```       
+```{r}
+#calculating means/SD for significant example:
+dfOMCHN2 <- subset(dfOMCHN, APOE = "E2HN")
+dfYFCHN2 <- subset(dfYFCHN, APOE = "E2HN")
+
+OMCHN2means <- mean(dfOMCHN2$Total.Distance)
+OMCHN2sd <- sd(dfOMCHN2$Total.Distance)
+
+YFCHN2means <- mean(dfYFCHN2$Total.Distance)
+YFCHN2sd <- sd(dfYFCHN2$Total.Distance)
+
+library(effsize)
+coD <- cohen.d(dfOMCHN2$Total.Distance, dfYFCHN2$Total.Distance)
+
+
+```
+
+```{r}
+#Table summary of HN dataset:
+tHN <- table(dfHNOpen$Sex, dfHNOpen$APOE, dfHNOpen$Diet, dfHNOpen$Age_Cat)
+tHN <- addmargins(tHN)
+tHN
+# tHN <- as.data.frame(tHN)
+# write.csv(tHN, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/tableHN.csv", row.names = TRUE)
+
+print("Base")
+
+tBase <- table(dfBaseOpen$Sex, dfBaseOpen$APOE, dfBaseOpen$Diet, dfBaseOpen$Age_Cat)
+tBase <- addmargins(tBase)
+tBase
+```
+
+```{r}
+gHN<-ggplot(dfHNOpen, aes(x=APOE, y=Total.Distance, color = Diet)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) + geom_jitter(position=position_dodge(1)) + stat_n_text()+ labs(title="Total distance in E2HN, E3HN, E4HN genotype in openfield", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black"))
+  
+gHN
+
+ggsave('Openfield_total distance_Hn Genotypes_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)     
+```
+```{r}
+#Young Total Diet
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+
+#pairwise testing between sex
+stat.test <- dfYTDHN %>%
+  group_by(APOE) %>%
+  t_test(Total.Distance~Sex) %>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance("p.adj")
+stat.test
+
+stat.test <- stat.test %>%
+  add_xy_position(x= "APOE", dodge = 0.8)  
+
+
+
+gHN<-ggplot(dfYTDHN, aes(x=APOE, y=Total.Distance, color = Sex)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) + geom_jitter(position=position_dodge(1)) +  stat_n_text()+ labs(title="Total distance in E2HN, E3HN, E4HN genotype in openfield among 12 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black"))  + stat_compare_means(method ="anova", label.y= 70)  + stat_pvalue_manual(stat.test, label = "p", tip.length = 0, hide.ns = TRUE)
+  
+gHN
+ggsave('Openfield_total distance_Hn Genotypes_Young.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)     
+```
+```{r}
+gHN + facet_grid(rows = vars(Diet), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('YoungViolinsOpenfield_total distance_HN Genotypes_box Age_Sex_.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=11, unit=c("in"), dpi=300)
+
+```
+```{r}
+#Young Total Comparing Diet
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+
+#pairwise testing between diet
+stat.test <- dfYTDHN %>%
+  group_by(APOE) %>%
+  t_test(Total.Distance~Diet) %>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance("p.adj")
+stat.test
+
+stat.test <- stat.test %>%
+  add_xy_position(x= "APOE", dodge = 0.8)  
+
+gHN<-ggplot(dfYTDHN, aes(x=APOE, y=Total.Distance, color = Diet)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) + geom_jitter(position=position_dodge(1)) +  stat_n_text()+ labs(title="Total distance in E2HN, E3HN, E4HN genotype in openfield among 12 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black")) +  stat_compare_means(comparisons = my_comparisons) + stat_compare_means(method ="anova", label.y= 70)+ stat_pvalue_manual(stat.test, label = "p", tip.length = 0, hide.ns = TRUE)
+  
+gHN
+
+gHN + facet_grid(rows = vars(Sex), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('YoungViolinsOpenfield_total distance_HN Genotypes_box Compare_Diet_.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=11, unit=c("in"), dpi=300)  + stat_pvalue_manual(stat.test, label = "p", tip.length = 0, hide.ns = TRUE)
+
+```
+
+
+
+
+```{r}
+#Old Total Diet
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+
+#pairwise testing between Sex
+stat.test <- dfOTDHN%>%
+  group_by(APOE) %>%
+  t_test(Total.Distance~Sex)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance("p.adj")
+stat.test
+
+stat.test <- stat.test %>%
+  add_xy_position(x= "APOE", dodge = 0.8)  
+
+
+gHN<-ggplot(dfOTDHN, aes(x=APOE, y=Total.Distance, color = Sex)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) + geom_jitter(position=position_dodge(1)) + stat_n_text()+ labs(title="Total distance in E2HN, E3HN, E4HN genotype in openfield among 18 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black")) +  stat_compare_means(comparisons = my_comparisons) + stat_compare_means(method ="anova", label.y= 55) + stat_pvalue_manual(stat.test, label = "p", tip.length = 0, hide.ns = TRUE)
+  
+gHN
+ggsave('Openfield_total distance_Hn Genotypes_Old.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)     
+```
+```{r}
+gHN + facet_grid(rows = vars(Diet), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('OldViolinsOpenfield_total distance_HN Genotypes_box Age_Sex.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=11, unit=c("in"), dpi=300) 
+
+```
+
+```{r}
+#Old Total Diet
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+
+# #pairwise testing between diet
+# stat.test <- dfOTDHN%>%
+#   group_by(APOE) %>%
+#   t_test(Total.Distance~Diet) %>%
+#   adjust_pvalue(method = "bonferroni") %>%
+#   add_significance("p.adj")
+# stat.test
+# 
+# stat.test <- stat.test %>%
+#   add_xy_position(x= "APOE", dodge = 0.8)  
+
+
+gHN<-ggplot(dfOTDHN, aes(x=APOE, y=Total.Distance, color = Diet)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) + geom_jitter(position=position_dodge(1)) + stat_n_text()+ labs(title="Total distance in E2HN, E3HN, E4HN genotype in openfield among 18 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black")) +  stat_compare_means(comparisons = my_comparisons) + stat_compare_means(method ="anova", label.y= 55)
+  
+gHN
+
+gHN + facet_grid(rows = vars(Sex), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('OldViolinsOpenfield_total distance_HN Genotypes_box Age_Sex_CompareDiet.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=11, unit=c("in"), dpi=300)
+
+```
+
+
+```{r}
+#Female Total Diet NEED TO FINISH 
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+
+gHN<-ggplot(dfFTDHN, aes(x=APOE, y=Total.Distance, color = Sex)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) + geom_jitter(position=position_dodge(1)) +  stat_n_text()+ labs(title="Total distance in E2HN, E3HN, E4HN genotype in openfield among 12 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black")) +  stat_compare_means(comparisons = my_comparisons) + stat_compare_means(method ="anova", label.y= 70)
+  
+gHN
+ggsave('Openfield_total distance_Hn Genotypes_Young.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)     
+
+```
+```{r}
+gHN + facet_grid(rows = vars(Diet), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('YoungViolinsOpenfield_total distance_HN Genotypes_box Age_Sex_.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=11, unit=c("in"), dpi=300)
+
+```
+
+
+
+```{r}     
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+#test <- list(c("E33", "E44")) also stat_compare_means(comparisons = list(c("E22", "E33")))
+
+gHN<-ggviolin(dfHNOpen, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 45) +   stat_n_text()+ labs(title="Total distance in E2HN, E3HN, E4HN genotype in openfield", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5)) +geom_point() 
+gHN
+ggsave('Openfield_total distance_Hn Genotypes_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)       
+```
+
+
+```{r}
+gHN + facet_grid(Age_Cat~Sex, margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('ViolinsOpenfield_total distance_HN Genotypes_box Age_Sex.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=20, height=15, unit=c("in"), dpi=300)
+
+```
+```{r}     
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+#test <- list(c("E33", "E44")) also stat_compare_means(comparisons = list(c("E22", "E33")))
+
+gHN<-ggviolin(dfHNOpen, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 45) +   stat_n_text()+ labs(title="Total distance in E2HN, E3HN, E4HN genotype in openfield", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+gHN
+ggsave('Openfield_total distance_Hn Genotypes_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)       
+```
+
+
+```{r}
+gHN + facet_grid(Sex~Age_Cat, margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('ViolinsOpenfield_total distance_HN Genotypes_box Age_Sex_TRANSPOSE.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=15, height=15, unit=c("in"), dpi=300)
+
+```
+```{r}
+oB<- lm(Total.Distance ~ APOE*Sex*Age_Cat*Diet, data=dfBaseOpen)
+anova(oB)
+oB_anova <- as.data.frame(anova(oB))
+library(effectsize)
+eta=eta_squared(oB)
+eta<- as.data.frame(eta_squared(oB))
+cohens<- as.data.frame(cohens_f(oB))
+
+
+write.csv(eta, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/Base_anova_eff.csv" )
+write.csv(cohens, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/Base_anova_cohens.csv" )
+write.csv(oB_anova, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/Base_anova.csv")
+summary(oB)
+
+
+emmeans(oB, list(pairwise~APOE*Sex*Age_Cat*Diet), adjust="tukey")
+posthoc1B <- (as.data.frame(emmeans(oHN, list(pairwise ~ APOE*Sex*Age_Cat*Diet), adjust="tukey"))) #pairwise differences of genotype, sex, age and diet
+
+write.csv(posthoc1B, "/Users/celwa/Desktop/Fall 2022/BASS CONNECTIONS/Base_posthoc1.csv", row.names = TRUE)
+
+```
+
+```{r}       
+my_comparisons <- list( c("E22", "E33"), (c("E33", "E44")), (c("E22", "E44")) )
+
+gB<-ggviolin(dfBaseOpen, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 55) + stat_compare_means(comparisons = my_comparisons) + stat_n_text()+ labs(title="Total distance in E22, E33, E44 genotype in openfield", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+gB
+ggsave('ViolinTest.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)       
+```
+
+
+
+```{r}
+gB + facet_grid(Age_Cat~Sex, margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('ViolinsOpenfield_total distance_Base Genotypes_box Age_Sex.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=15, height=15, unit=c("in"), dpi=300)
+
+```
+```{r}       
+my_comparisons <- list( c("E22", "E33"), (c("E33", "E44")), (c("E22", "E44")) )
+
+gB<-ggviolin(dfBaseOpen, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 55) + stat_compare_means(comparisons = my_comparisons) + stat_n_text()+ labs(title="Total distance in E22, E33, E44 genotype in openfield", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+gB
+ggsave('ViolinTest.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300) 
+```
+
+```{r}
+gB + facet_grid(Sex~Age_Cat, margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('ViolinsOpenfield_total distance_Base Genotypes_box Age_Sex.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=15, height=15, unit=c("in"), dpi=300)
+
+```
+
+
+
+```{r}       
+#Comparing old base genotypes 
+
+# gHN<-ggplot(dfHNOpen, aes(x=APOE, y=Total.Distance, color = Diet)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) + geom_jitter(position=position_dodge(1)) + stat_n_text()+ labs(title="Total distance in E2HN, E3HN, E4HN genotype in openfield", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black"))
+#   
+# gHN
+# 
+# ggsave('Openfield_total distance_Hn Genotypes_Violins.pdf', plot=last_plot(), device='pdf',
+#        scale=1, width=9, height=4.5, unit=c("in"), dpi=300)     
+
+
+
+gB<-ggviolin(dfOTDB, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 55) + stat_compare_means(comparisons = my_comparisons) + stat_n_text()+ labs(title="Total distance in E22, E33, E44 genotype in openfield among 18 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+gB
+ggsave('OldBase_Openfield_total distance_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)       
+```
+```{r}
+my_comparisons <- list( c("E22", "E33"), (c("E22", "E44")), (c("E33", "E44")) )
+
+gB + facet_grid(rows = vars(Sex), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('OldBaseSex_Openfield_total distance_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=10, height=4.5, unit=c("in"), dpi=300)
+
+```
+```{r}       
+#Comparing young base genotypes 
+
+gB<-ggviolin(dfYTDB, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 55) + stat_compare_means(comparisons = my_comparisons) + stat_n_text()+ labs(title="Total distance in E22, E33, E44 genotype in openfield among 12 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+gB
+ggsave('YoungBase_Openfield_total distance_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)       
+```
+```{r}
+my_comparisons <- list( c("E22", "E33"), (c("E22", "E44")), (c("E33", "E44")) )
+
+gB + facet_grid(cols = vars(Sex), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('YoungBaseSex_Openfield_total distance_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+       
+```       
+
+```{r}
+g<-ggboxplot(dfOpen, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet")+
+  stat_compare_means(method ="anova", label.y= 45) +   stat_n_text()+ labs(title="Total distance in all genotype in openfield", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+g
+ggsave('Openfield_total distance_all Genotypes_box plot.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+```
+
+
+
+
+```{r}
+g + facet_grid(Age_Cat~Sex, margins=TRUE)
+ggsave('Openfield_total distance_all Genotypes_box plot.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+```
+#Outerzone data for base:
+
+```{r}
+gBO<-ggviolin(dfYTDB, x= "APOE", y ="Outerzone.distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 120) + stat_compare_means(comparisons = my_comparisons) + stat_n_text()+ labs(title="Outerzone distance in E22, E33, E44 genotype in openfield among 12 month", x = "APOE_Genotypes",y ="Outerzone Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+gBO
+ggsave('OuterzoneViolinYoung.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)       
+
+```
+```{r}
+gBO+facet_grid(cols = vars(Sex), margins=TRUE)
+ggsave('Outerzone distance_Base_Young_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=13, unit=c("in"), dpi=300)
+```
+```{r}
+gBO<-ggviolin(dfOTDB, x= "APOE", y ="Outerzone.distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 35) + stat_compare_means(comparisons = my_comparisons) + stat_n_text()+ labs(title="Outerzone distance in E22, E33, E44 genotype in openfield among 18 month", x = "APOE_Genotypes",y ="Outerzone Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+gBO
+ggsave('OuterzoneViolinOld.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)       
+
+```
+```{r}
+gBO+facet_grid(cols = vars(Sex), margins=TRUE)
+ggsave('Outerzone distance_Base_Old_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=9, unit=c("in"), dpi=300)
+```
+#Comparing outer zones YOUNGER b/w Diet HN genotype
+```{r}     
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+#' Detect outliers using IQR method
+#' 
+#' @param x A numeric vector
+#' @param na.rm Whether to exclude NAs when computing quantiles
+#' 
+is_outlier <- function(x, na.rm = FALSE) {
+  qs = quantile(x, probs = c(0.25, 0.75), na.rm = na.rm)
+
+  lowerq <- qs[1]
+  upperq <- qs[2]
+  iqr = upperq - lowerq 
+
+  extreme.threshold.upper = (iqr * 3) + upperq
+  extreme.threshold.lower = lowerq - (iqr * 3)
+
+  # Return logical vector
+  x > extreme.threshold.upper | x < extreme.threshold.lower
+}
+
+#' Remove rows with outliers in given columns
+#' 
+#' Any row with at least 1 outlier will be removed
+#' 
+#' @param df A data.frame
+#' @param cols Names of the columns of interest. Defaults to all columns.
+#' 
+#' 
+remove_outliers <- function(df, cols = names(df)) {
+  for (col in cols) {
+    cat("Removing outliers in column: ", col, " \n")
+    df <- df[!is_outlier(df[[col]]),]
+  }
+  df
+}
+vars <- c("Outerzone.distance")
+dfYTDHN_filtered<- remove_outliers(dfYTDHN, vars)
+
+stat.test <- dfYTDHN_filtered%>%
+  group_by(APOE) %>%
+  t_test(Outerzone.distance~Diet)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance("p.adj")
+stat.test
+
+stat.test <- stat.test %>%
+  add_xy_position(x= "APOE", dodge = 0.8)  
+
+
+
+gHN<-ggplot(dfYTDHN_filtered, aes(x=APOE, y=Outerzone.distance, color = Diet)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) + geom_jitter(position=position_dodge(1)) + stat_n_text()+ labs(title="Outerzone distance in E2HN, E3HN, E4HN genotype in openfield among 12 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black")) +  stat_compare_means(comparisons = my_comparisons) + stat_compare_means(method ="anova", label.y= 45) +  stat_pvalue_manual(stat.test, label = "p", tip.length = 0, hide.ns = TRUE)
+gHN
+
+gHN + facet_grid(rows = vars(Sex), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('YoungViolinsOpenfield_Outer distance_HN Genotypes_box Age_Sex_CompareDiet.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=11, unit=c("in"), dpi=300)
+
+```
+
+
+```{r}     
+#Comparing outer zones OLDER b/w Diet
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+
+gHN<-ggplot(dfOTDHN, aes(x=APOE, y=Outerzone.distance, color = Diet)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) + geom_jitter(position=position_dodge(1)) + stat_n_text()+ labs(title="Outerzone distance in E2HN, E3HN, E4HN genotype in openfield among 18 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black")) +  stat_compare_means(comparisons = my_comparisons) + stat_compare_means(method ="anova", label.y= 55)
+gHN
+
+gHN + facet_grid(rows = vars(Sex), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('OldViolinsOpenfield_Outer distance_HN Genotypes_box Age_Sex_CompareDiet.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=11, unit=c("in"), dpi=300)
+
+
+
+```
+```{r}
+gHN+facet_grid(Age_Cat~Sex, margins=TRUE)
+ggsave('Outerzone distance_HN_Age_Sex_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=9, unit=c("in"), dpi=300)
+```
+#Centerzone Data:
+```{r}
+gBO<-ggviolin(dfYTDB, x= "APOE", y ="Centerzone.distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 170) + stat_compare_means(comparisons = my_comparisons) + stat_n_text()+ labs(title="Centerzone distance in E22, E33, E44 genotype in openfield among 12 month", x = "APOE_Genotypes",y ="Centerzone Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+gBO
+ggsave('CenterzoneViolinYoung.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)       
+
+```
+```{r}
+gBO+facet_grid(cols = vars(Sex), margins=TRUE)
+ggsave('Centerzone distance_Base_Young_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=13, unit=c("in"), dpi=300)
+```
+```{r}
+gBO<-ggviolin(dfOTDB, x= "APOE", y ="Centerzone.distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 15) + stat_compare_means(comparisons = my_comparisons) + stat_n_text()+ labs(title="Centerzone distance in E22, E33, E44 genotype in openfield among 18 month", x = "APOE_Genotypes",y ="Centerzone Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+gBO
+ggsave('CenterzoneViolinOld.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)       
+
+```
+```{r}
+gBO+facet_grid(cols = vars(Sex), margins=TRUE)
+ggsave('Centerzone distance_Base_Old_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=9, unit=c("in"), dpi=300)
+```
+```{r}     
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+#test <- list(c("E33", "E44")) also stat_compare_means(comparisons = list(c("E22", "E33")))
+
+gHN<-ggviolin(dfHNOpen, x= "APOE", y ="Centerzone.distance", color = "Diet", palette = "lancet", add = "boxplot")+
+  stat_compare_means(method ="anova", label.y= 60) +   stat_n_text()+ labs(title="Centerzone distance in E2HN, E3HN, E4HN genotype in openfield", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+gHN
+ggsave('Openfield_Centerzone distance_Hn Genotypes_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)       
+```
+```{r}
+gHN+facet_grid(Age_Cat~Sex, margins=TRUE)
+ggsave('Centerzone distance_HN_Age_Sex_Violins.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=9, unit=c("in"), dpi=300)
+```
+
+```{r}     
+#Comparing center zones YOUNGER b/w Diet
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+
+gHN<-ggplot(dfYTDHN, aes(x=APOE, y=Centerzone.distance, color = Diet)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) +   stat_compare_means(method ="anova", label.y= 21) + geom_jitter(position=position_dodge(1)) + stat_n_text()+ labs(title="Centerzone distance in E2HN, E3HN, E4HN genotype in openfield among 12 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black")) +  stat_compare_means(comparisons = my_comparisons) 
+gHN
+
+gHN + facet_grid(rows = vars(Sex), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('YoungViolinsOpenfield_Center distance_HN Genotypes_box Age_Sex_CompareDiet.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=11, unit=c("in"), dpi=300)
+
+```
+
+
+
+```{r}     
+#Comparing center zones OLDER b/w Diet
+my_comparisons <- list( c("E2HN", "E3HN"), (c("E2HN", "E4HN")), (c("E3HN", "E4HN")) )
+
+gHN<-ggplot(dfOTDHN, aes(x=APOE, y=Centerzone.distance, color = Diet)) + geom_violin(position=position_dodge(1)) + geom_boxplot(position=position_dodge(1), width = 0.15) +   stat_compare_means(method ="anova", label.y= 21) + geom_jitter(position=position_dodge(1)) + stat_n_text()+ labs(title="Centerzone distance in E2HN, E3HN, E4HN genotype in openfield among 18 month", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5), panel.background=element_blank(), axis.line = element_line(colour = "black")) +  stat_compare_means(comparisons = my_comparisons) + stat_compare_means(method ="anova", label.y= 55)
+gHN
+
+gHN + facet_grid(rows = vars(Sex), margins=TRUE) + stat_compare_means(comparisons = my_comparisons)
+ggsave('OldViolinsOpenfield_Center distance_HN Genotypes_box Age_Sex_CompareDiet.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=11, unit=c("in"), dpi=300)
+
+```
+
+#YMTD Among 12 month male
+```{r}
+a<-ggboxplot(dfYMTD, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet")+
+  stat_compare_means(method ="anova", label.y= 45) +   stat_n_text()+ labs(title="Total distance in all genotype in openfield among 12 month Male", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+
+a
+ggsave('Openfield_total distance_all Genotypes_box plot age_sex.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=9, unit=c("in"), dpi=300)
+```
+
+#YFTD Among 12 month Female
+```{r}
+b<-ggboxplot(dfYFTD, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet")+
+  stat_compare_means(method ="anova", label.y= 45)+ stat_n_text()+ labs(title="Total distance in all genotype in openfield among 12 month Female", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+
+b
+```
+
+#OMTD among 18 month male
+```{r}
+c<-ggboxplot(dfOMTD, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet")+
+  stat_compare_means(method ="anova", label.y= 45) + stat_n_text()+ labs(title="Total distance in all genotype in openfield among 18 month Male", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+
+c
+```
+
+#OFTD among 18 month female
+```{r}
+d<-ggboxplot(dfOFTD, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet")+
+  stat_compare_means(method ="anova", label.y= 45) + stat_compare_means(label = "p.signif", method = "t.test",  paired = FALSE, ref.group = "0.5")+  stat_n_text()+ 
+  labs(title="Total distance in all genotype in openfield among 18 month Female", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+
+d
+```
+#YTD(12 month old both sex )stats 
+```{r}
+a2<- stats:: aov(Total.Distance ~ APOE*Sex*Diet, data=dfYTD)
+summary(a2)
+TukeyHSD(a2, "Sex")
+```
+#YTD visualization (12 month old) by sex
+```{r}
+e<-ggboxplot(dfYTD, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet")+
+  stat_compare_means(method ="anova", label.y= 45) + stat_compare_means(label = "p.signif", method = "t.test", ref.group = "0.5")+ facet_wrap(.~ Sex) + stat_n_text() +labs(title="Total distance in all genotype in openfield among 12 month old by sex", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+e
+```
+#12 month old by diet
+```{r}
+h<-ggboxplot(dfYTD, x= "APOE", y ="Total.Distance", color = "Sex", palette = "lancet")+
+  stat_compare_means(method ="anova", label.y= 45) + facet_wrap(.~ Diet) + stat_n_text() +labs(title="Total distance in all genotype in openfield among 12 month old by diet", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+h
+```
+
+#OTD(18 month old) stats
+```{r}
+a3<- stats:: aov(Total.Distance ~ APOE*Sex*Diet, data=dfOTD)
+summary(a3)
+TukeyHSD(a3, "Sex")
+```
+
+#OTD visualizations 18 month old by sex
+```{r}
+f<-ggboxplot(dfOTD, x= "APOE", y ="Total.Distance", color = "Diet", palette = "lancet")+
+  stat_compare_means(method ="anova", label.y= 45) +  facet_wrap(.~ Sex)+ stat_n_text()+ stat_n_text() +
+  labs(title="Total distance in all genotype in openfield among 18 month old by sex", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+f
+```
+#18 month old by diet
+```{r}
+i<-ggboxplot(dfOTD, x= "APOE", y ="Total.Distance", color = "Sex", palette = "lancet")+
+  stat_compare_means(method ="anova", label.y= 45) +  facet_wrap(.~ Diet)+ stat_n_text()+ stat_n_text() +
+  labs(title="Total distance in all genotype in openfield among 18 month old by diet", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+i
+```
+
+# Among 12 month old male Control (YMC)
+ggplot(dfYMC, aes (APOE, Total.Distance)) + stat_boxplot(aes (APOE, Total.Distance), geom = 'errorbar', linetype=1, width=0.5)+ #whiskers
+  geom_boxplot(aes(fill=APOE), outlier.shape = 1)+ scale_fill_manual(values=c('blueviolet','pink', 'chartreuse1', 'cyan2','orange','yellow')) +
+                                 stat_summary(fun=mean,geom="point", color = 'black',size=2)+  stat_summary(fun=mean,geom= 'line',aes (group=1), color ='red')+ stat_n_text() +
+ 
+  labs(title="Total distance in all genotype in openfield among YMC", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+
+
+#Stat anova test for YMC (testing)
+
+
+res.aov <- anova_test(data = dfYMC, Total.Distance~APOE)
+get_anova_table(res.aov)
+
+postHoc<-pairwise.t.test(dfYMC$Total.Distance, dfYMC$APOE,p.adjust.method = "bonferroni")
+postHoc
+
+
+#ggsave(paste(outpath, 'Total distance of all genotype in openfield among young male control.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+
+#normal boxplot
+ggplot(dfYMC, aes(x=APOE, y=Total.Distance, group=APOE)) + 
+  geom_boxplot(aes(fill=APOE))+ 
+  
+labs (title = "Total distance of all genotype in openfield among young male control", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+
+ggsave(paste(outpath, 'Total distance of all genotype in openfield among young male control.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+
+
+##dfOpen all stat (Total Time freezing)
+```{r}
+a2<- stats:: aov(Total.Time.Freezing ~ APOE*Sex*Age_Cat*Diet, data=dfOpen)
+summary(a1)
+TukeyHSD(a2, "Sex")
+```
+
+#Visualization Openfiled within all genotype and Diet (Total distance vs freezing time)
+```{r}
+ggplot(dfOpen, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=Diet))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield within all genotype") + facet_wrap(~APOE)
+
+```
+
+##Total distance vs total freezing time within 12 month old male  
+```{r}
+ggplot(dfYMTD, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=Diet))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield within 12month old male") + facet_wrap(~APOE)
+
+```
+# ggsave(paste(outpath, 'Total distance vs freezing time YMC_scatter plot.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+       
+
+#YFC boxplot
+ggplot(dfYFTD, aes (APOE, Total.Distance)) + stat_boxplot(aes (APOE, Total.Distance), geom = 'errorbar', linetype=1, width=0.5)+ #whiskers
+  geom_boxplot(aes(fill=APOE), outlier.shape=1)+scale_fill_manual(values=c('blueviolet','pink', 'chartreuse1', 'cyan2','orange','yellow')) + stat_summary(fun=mean,geom="point", color = 'black',size=2)+  stat_summary(fun=mean,geom= 'line',aes (group=1), color ='red')+
+ stat_n_text() +
+  labs(title="Total distance in all genotype in openfield among YFC", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+# ggsave(paste(outpath, 'Total distance of all genotype in openfield among young female control.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+       
+       
+#Stats test for YFC
+
+res.aov <- anova_test(data = dfYFC, Total.Distance~APOE)
+get_anova_table(res.aov)
+
+postHoc<-pairwise.t.test(dfYFC$Total.Distance, dfYFC$APOE,p.adjust.method = "bonferroni")
+postHoc
+
+     
+#Total distance vs total freezing time within 12 month old female 
+```{r}
+ggplot(dfYFTD, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=Diet))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield withing 12 month female") + facet_wrap(~ APOE)
+```
+
+
+##Total distance vs total freezing time within 18 month old male  
+```{r}
+ggplot(dfOMTD, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=Diet))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield within 18month old male") + facet_wrap(~APOE)
+
+```
+##Total distance vs total freezing time within 18 month old female  
+```{r}
+ggplot(dfOFTD, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=Diet))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield within 18month old female") + facet_wrap(~APOE)
+
+```
+
+#YMH 12 month male HFD
+
+ggplot(dfYMH, aes (APOE, Total.Distance)) + stat_boxplot(aes (APOE, Total.Distance), geom = 'errorbar', linetype=1, width=0.5)+ #whiskers
+  geom_boxplot(aes(fill=APOE), outlier.shape=1)+scale_fill_manual(values=c('blueviolet','pink', 'chartreuse1', 'cyan2','orange','yellow'))+ stat_summary(fun=mean,geom="point", color = 'black',size=2)+  stat_summary(fun=mean,geom= 'line',aes (group=1), color ='red')+ stat_n_text() +
+ 
+  labs(title="Total distance in all genotype in openfield among YMH", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+
+# ggsave(paste(outpath, 'Total distance YMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+
+##Total distance vs total freezing time YMH 
+
+ggplot(dfYMH, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=APOE))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield among young male HFD") + facet_wrap(~ APOE)
+# ggsave(paste(outpath, 'Total distance vs freezing time YMH_scatter plot.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+       
+#YFH Young female HFD
+
+ggplot(dfYFH, aes (APOE, Total.Distance)) + stat_boxplot(aes (APOE, Total.Distance), geom = 'errorbar', linetype=1, width=0.5)+ #whiskers
+  geom_boxplot(aes(fill=APOE), outlier.shape=1)+scale_fill_manual(values=c('blueviolet','pink', 'chartreuse1', 'cyan2','orange','yellow')) + stat_summary(fun=mean,geom="point", color = 'black',size=2)+  stat_summary(fun=mean,geom= 'line',aes (group=1), color ='red')+ stat_n_text() +
+ 
+  labs(title="Total distance in all genotype in openfield among YFH", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+# ggsave(paste(outpath, 'Total distance YFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+
+##Total distance vs total freezing time YFH 
+
+ggplot(dfYFH, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=APOE))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield among young female HFD") + facet_wrap(~ APOE)
+# ggsave(paste(outpath, 'Total distance vs freezing time YFH_scatter plot.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+
+#OMC 18 month old male control
+
+ggplot(dfOMC, aes (APOE, Total.Distance)) + stat_boxplot(aes (APOE, Total.Distance), geom = 'errorbar', linetype=1, width=0.5)+ #whiskers
+  geom_boxplot(aes(fill=APOE), outlier.shape=1)+ stat_summary(fun=mean,geom="point", color = 'black',size=2)+  stat_summary(fun=mean,geom= 'line',aes (group=1), color ='red')+scale_fill_manual(values=c('blueviolet','pink', 'chartreuse1', 'cyan2','orange','yellow'))+stat_n_text() +
+ 
+  labs(title="Total distance in all genotype in openfield among OMC", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+# ggsave(paste(outpath, 'Total distance of all genotype in openfield among Old male control.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+ 
+
+
+     
+##Total distance vs total freezing time OMC   
+
+ggplot(dfOMC, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=APOE))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield among Old male control") + facet_wrap(~ APOE)
+
+# ggsave(paste(outpath, 'Total distance vs freezing time OMC_scatter plot.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+       
+#OFC 18 month old female control
+
+ggplot(dfOFC, aes (APOE, Total.Distance)) + stat_boxplot(aes (APOE, Total.Distance), geom = 'errorbar', linetype=1, width=0.5)+ #whiskers
+  geom_boxplot(aes(fill=APOE), outlier.shape=1)+ stat_summary(fun=mean,geom="point", color = 'black',size=2)+  stat_summary(fun=mean,geom= 'line',aes (group=1), color ='red')+scale_fill_manual(values=c('blueviolet','pink', 'chartreuse1', 'cyan2','orange','yellow'))+stat_n_text() +
+ 
+  labs(title="Total distance in all genotype in openfield among OFC", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+# ggsave(paste(outpath, 'Total distance of all genotype in openfield among Old female control.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+            
+##Total distance vs total freezing time OFC 
+
+ggplot(dfOFC, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=APOE))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield among Old female control") + facet_wrap(~ APOE)
+
+# ggsave(paste(outpath, 'Total distance vs freezing time OFC_scatter plot.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+       
+#OMH 18 month old male HFD
+
+ggplot(dfOMH, aes (APOE, Total.Distance)) + stat_boxplot(aes (APOE, Total.Distance), geom = 'errorbar', linetype=1, width=0.5)+ #whiskers
+  geom_boxplot(aes(fill=APOE), outlier.shape=1)+ stat_summary(fun=mean,geom="point", color = 'black',size=2)+  stat_summary(fun=mean,geom= 'line',aes (group=1), color ='red')+scale_fill_manual(values=c( 'cyan2'))+stat_n_text() +
+ 
+  labs(title="Total distance in all genotype in openfield among OMH", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+
+# ggsave(paste(outpath, 'Total distance OMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+
+##Total distance vs total freezing time OMH 
+
+ggplot(dfOMH, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=APOE))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield among old male HFD") + facet_wrap(~ APOE)
+# ggsave(paste(outpath, 'Total distance vs freezing time OMH_scatter plot.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+       
+#OFH 18 month old HFD
+
+ggplot(dfOFH, aes (APOE, Total.Distance)) + stat_boxplot(aes (APOE, Total.Distance), geom = 'errorbar', linetype=1, width=0.5)+ #whiskers
+  geom_boxplot(aes(fill=APOE), outlier.shape=1)+ stat_summary(fun=mean,geom="point", color = 'black',size=2)+  stat_summary(fun=mean,geom= 'line',aes (group=1), color ='red')+scale_fill_manual(values=c( 'cyan2'))+stat_n_text() +
+ 
+  labs(title="Total distance in all genotype in openfield among OFH", x = "APOE_Genotypes",y ="Total Distance (m)")+ theme(plot.title = element_text(hjust = 0.5))
+
+# ggsave(paste(outpath, 'Total distance OFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+
+##Total distance vs total freezing time OFH 
+
+ggplot(dfOFH, aes (Total.Distance,Total.Time.Freezing))+ geom_point(aes(color=APOE))+ scale_x_continuous("Total distance(m)",breaks =seq (0,100,by =10))+ scale_y_continuous("Total freezing time (s)", breaks = seq (0,500,by=50))+ theme_bw()+labs (title="Openfield among Old female HFD") + facet_wrap(~ APOE)
+
+# ggsave(paste(outpath, 'Total distance vs freezing time OFH_scatter plot.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+
+#Dilution Day 1 Analysis
+
+```{r}
+dfAll1 <-rename (dfAll, c(Obj_1 = Object1.headtime,Obj_2 = Object2.headtime, Obj_3 = Object.3.headtime, Obj_4 = Object4.headtime))
+dfBase1 <-rename (dfBase, c(Obj_1 = Object1.headtime,Obj_2 = Object2.headtime, Obj_3 = Object.3.headtime, Obj_4 = Object4.headtime))
+dfHN1 <-rename (dfHN, c(Obj_1 = Object1.headtime,Obj_2 = Object2.headtime, Obj_3 = Object.3.headtime, Obj_4 = Object4.headtime))
+```
+
+```{r}
+dfDay1DHT_YMC<-subset(dfAll1, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_YFC<-subset(dfAll1, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_YMH<-subset(dfAll1, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='HFD')& (Stage=='Dilutions'))
+dfDay1DHT_YFH<-subset(dfAll1, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='HFD')& (Stage=='Dilutions'))
+dfDay1DHT_OMC<-subset(dfAll1, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_OFC<-subset(dfAll1, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_OMH<-subset(dfAll1, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='HFD')& (Stage=='Dilutions'))
+dfDay1DHT_OFH<-subset(dfAll1, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='HFD')& (Stage=='Dilutions'))
+
+dfDay1DHT_YMCB<-subset(dfBase1, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_YFCB<-subset(dfBase1, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_YMHB<-subset(dfBase1, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='HFD')& (Stage=='Dilutions'))
+dfDay1DHT_YFHB<-subset(dfBase1, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='HFD')& (Stage=='Dilutions'))
+dfDay1DHT_OMCB<-subset(dfBase1, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_OFCB<-subset(dfBase1, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_OMHB<-subset(dfBase1, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='HFD')& (Stage=='Dilutions'))
+dfDay1DHT_OFHB<-subset(dfBase1, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='HFD')& (Stage=='Dilutions'))
+
+dfDay1DHT_YMCHN<-subset(dfHN1, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_YFCHN<-subset(dfHN1, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_YMHHN<-subset(dfHN1, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='HFD')& (Stage=='Dilutions'))
+dfDay1DHT_YFHHN<-subset(dfHN1, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='HFD')& (Stage=='Dilutions'))
+dfDay1DHT_OMCHN<-subset(dfHN1, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_OFCHN<-subset(dfHN1, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='Control')& (Stage=='Dilutions'))
+dfDay1DHT_OMHHN<-subset(dfHN1, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='HFD')& (Stage=='Dilutions'))
+dfDay1DHT_OFHHN<-subset(dfHN1, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='HFD')& (Stage=='Dilutions'))
+
+```
+
+```{r}
+dfYMD<- rbind(dfDay1DHT_YMC, dfDay1DHT_YMH)
+dfYMDB <- rbind(dfDay1DHT_YMCB, dfDay1DHT_YMHB)
+
+dfYFD<- rbind(dfDay1DHT_YFC, dfDay1DHT_YFH)
+dfOMD<- rbind(dfDay1DHT_OMC, dfDay1DHT_OMH)
+dfOFD<- rbind(dfDay1DHT_OFC, dfDay1DHT_OFH)
+dfYD<- rbind(dfYMD, dfYFD)
+dfOD<- rbind(dfOMD, dfOFD)
+dfDilution <- rbind(dfYD, dfOD)
+```
+
+##Dilution headtime only
+```{r}
+dHN <- ggerrorplot(dfHN1, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Dilution headtime of all objects", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(.~Diet)
+
+ggsave('Day1_DilutionHeadtime_AllObjects_HN.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+
+```
+```{r}
+dHN + facet_grid(Age_Cat~Sex~Diet, margins=TRUE)
+ggsave('Day1_DilutionHeadtime_AllObjects_HNsplit.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=26, unit=c("in"), dpi=300)
+```
+
+
+
+#Within 12 month male
+
+```{r}
+ggerrorplot(dfYMDB, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Dilution headtime of all objects within 12 month male", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(.~Diet)
+
+ggsave('YMDDay1_DilutionHeadtime_AllObjects_HN.pdf', plot=last_plot(), device='pdf',
+       scale=1, width=9, height=4.5, unit=c("in"), dpi=300)
+```
+
+#12 month old female
+```{r}
+ggerrorplot(dfYFD, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Dilution headtime of all objects within 12 month female", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(.~Diet)
+            
+```
+
+# 18 month old male
+```{r}
+ggerrorplot(dfOMD, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Dilution headtime of all objects within 18 month male", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(.~Diet)
+            
+```
+
+#18 month old female
+
+```{r}
+ggerrorplot(dfOFD, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Dilution headtime of all objects within 18 month female", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(.~Diet)
+```
+
+#12 month Diet vs sex
+```{r}
+ggerrorplot(dfYD, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Dilution headtime of all objects within 12 month", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_grid(Diet ~ Sex)
+```
+#18 month Diet vs sex
+```{r}
+ggerrorplot(dfOD, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Dilution headtime of all objects within 18 month", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_grid(Diet ~ Sex)
+```
+
+#YMC
+
+ggerrorplot(dfDay1DHT_YMC, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, ylab='Object Head Time (s)',
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects among YMC", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+```
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among YMC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#YFC
+
+ggerrorplot(dfDay1DHT_YFC, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, ylab='Object Head Time (s)',
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects among YFC", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+```
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among YFC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+       
+#YMH
+
+ggerrorplot(dfDay1DHT_YMH, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, ylab='Object Head Time (s)',
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects among YMH", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among YMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#YFH
+
+ggerrorplot(dfDay1DHT_YFH, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, ylab='Object Head Time (s)',
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects among YFH", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among YFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#OMC
+
+ggerrorplot(dfDay1DHT_OMC, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, ylab='Object Head Time (s)',
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects among OMC", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among OMC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#OFC
+
+ggerrorplot(dfDay1DHT_OFC, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, ylab='Object Head Time (s)',
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects among OFC", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among OFC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#OMH
+
+ggerrorplot(dfDay1DHT_OMH, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, ylab='Object Head Time (s)',
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects among OMH", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among OMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#OFH
+
+ggerrorplot(dfDay1DHT_OFH, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, ylab='Object Head Time (s)',
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects among OFH", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among OFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+
+
+#Day1 Vanilla analysis
+#Dilution Day 1 Analysis
+#Day 1 Location Preference, headtime of all objects including Day1_vanilla
+
+```{r}
+dfDay1V_YMC<-subset(dfAll1, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='Control')& (Stage=='Day1_vanilla'))
+dfDay1V_YFC<-subset(dfAll1, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='Control')& (Stage=='Day1_vanilla'))
+dfDay1V_YMH<-subset(dfAll1, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='HFD')& (Stage=='Day1_vanilla'))
+dfDay1V_YFH<-subset(dfAll1, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='HFD')& (Stage=='Day1_vanilla'))
+dfDay1V_OMC<-subset(dfAll1, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='Control')& (Stage=='Day1_vanilla'))
+dfDay1V_OFC<-subset(dfAll1, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='Control')& (Stage=='Day1_vanilla'))
+dfDay1V_OMH<-subset(dfAll1, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='HFD')& (Stage=='Day1_vanilla'))
+dfDay1V_OFH<-subset(dfAll1, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='HFD')& (Stage=='Day1_vanilla'))
+
+```
+
+
+
+```{r}
+dfYMV<- rbind(dfDay1V_YMC, dfDay1V_YMH)
+dfYFV<- rbind(dfDay1V_YFC, dfDay1V_YFH)
+dfOMV<- rbind(dfDay1V_OMC, dfDay1V_OMH)
+dfOFV<- rbind(dfDay1V_OFC, dfDay1V_OFH)
+dfYV<- rbind(dfYMV, dfYFV)
+dfOV<- rbind(dfOMV, dfOFV)
+```
+
+
+
+#Within 12 month male
+
+```{r}
+ggerrorplot(dfYMV, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Vanilla headtime of all objects within 12 month male", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(.~Diet)
+```
+
+
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among YMC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+
+#12 month old female
+```{r}
+ggerrorplot(dfYFV, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Vanilla headtime of all objects within 12 month female", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(.~Diet)
+            
+```
+
+
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among YFC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#YMH
+ggerrorplot(dfDay1V_YMH, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects in Vanilla among YMH", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among YMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#YFH
+
+ggerrorplot(dfDay1V_YFH, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects in Vanilla among YFH", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among YFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+       
+# 18 month old male
+```{r}
+ggerrorplot(dfOMV, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Vanilla headtime of all objects within 18 month male", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(.~Diet)
+            
+```
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among OMC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+       
+#18 month old female
+
+```{r}
+ggerrorplot(dfOFV, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Vanilla headtime of all objects within 18 month female", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(.~Diet)
+```
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among OMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#OFC
+
+ggerrorplot(dfDay1V_OFC, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects in Vanilla among OFC", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+```
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among OFC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#OFH
+
+ggerrorplot(dfDay1V_OFH, x='APOE', y=c('Object1.headtime', 'Object2.headtime', 'Object.3.headtime', 'Object4.headtime'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1 headtime of all objects in Vanilla among OFH", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+#ggsave(paste(outpath, 'Day1_Headtime_allgenotypes among OFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+       ```
+       
+#12 month Diet vs sex
+```{r}
+ggerrorplot(dfYV, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Vanilla headtime of all objects within 12 month", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_grid(Diet ~ Sex)
+```
+
+#18 month Diet vs sex
+```{r}
+ggerrorplot(dfOV, x='APOE', y=c('Obj_1', 'Obj_2', 'Obj_3', 'Obj_4'), color='APOE', fill='APOE',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2), merge="flip")+ labs (title = "Day 1_Vanilla headtime of all objects within 18 month", x = "",y ="object headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_grid(Diet ~ Sex)
+```
+
+
+
+#Object 4 head time over Day 1 analysis 
+#Object 4 head time increase = they don't remember the old smell(object 4)
+```{r}
+dfDay1<-subset(dfAll, (Stage=='Dilutions')|(Trial=='5'))
+dfDay1_Obj4<-data.frame(dfDay1$ID, dfDay1$APOE, dfDay1$Age_Cat,dfDay1$Sex,dfDay1$Diet, dfDay1$Stage, dfDay1$Trial, dfDay1$Object4.headtime)
+dfDay1_Obj4<-cbind(dfDay1_Obj4, Object='Obj4')
+colnames(dfDay1_Obj4)<-c('AnimalID', 'Genotype', 'Age_Cat','Sex','Diet', 'Stage', 'Trial', 'Time', 'Object')
+```
+
+```{r}
+dfD1O4YMC<-subset(dfDay1_Obj4, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='Control'))
+dfD1O4YFC<-subset(dfDay1_Obj4, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='Control'))
+dfD1O4YMH<-subset(dfDay1_Obj4, (Age_Cat=='Young') &(Sex=='Male') & (Diet=='HFD'))
+dfD1O4YFH<-subset(dfDay1_Obj4, (Age_Cat=='Young') &(Sex=='Female') & (Diet=='HFD'))
+dfD1O4OMC<-subset(dfDay1_Obj4, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='Control'))
+dfD1O4OFC<-subset(dfDay1_Obj4, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='Control'))
+dfD1O4OMH<-subset(dfDay1_Obj4, (Age_Cat=='Old') &(Sex=='Male') & (Diet=='HFD'))
+dfD1O4OFH<-subset(dfDay1_Obj4, (Age_Cat=='Old') &(Sex=='Female') & (Diet=='HFD'))
+```
+
+```{r}
+dfYM_O4<- rbind(dfD1O4YMC, dfD1O4YMH)
+dfYF_O4<- rbind(dfD1O4YFC, dfD1O4YFH)
+dfOM_O4<- rbind(dfD1O4OMC, dfD1O4OMH)
+dfOF_O4<- rbind(dfD1O4OFC, dfD1O4OFH)
+dfY_O4<- rbind(dfYM_O4, dfYF_O4)
+dfO_O4<- rbind(dfOM_O4, dfOF_O4)
+```
+#Stats analysis Day1
+#Day1_Obj4
+#Data preparation
+# Dilution analysis (Day1 Trial 1 to 4)
+
+```{r}
+Day1ttest<- dfDay1_Obj4%>% mutate(Ttest = case_when(Stage == 'Dilutions' ~ "Pre", Stage == "Day1_vanilla" ~ "Post"))
+Day1Dilution <- subset (Day1ttest, Ttest=="Pre")
+```
+
+
+#Obj_4 headtimes in Day1 Trial 1 to 4
+```{r}
+res.aov <- anova_test(data = Day1Dilution ,  Time ~ Genotype*Diet*Age_Cat*Sex,  wid=AnimalID, within = Trial) 
+get_anova_table(res.aov)
+
+```
+
+#Comparison of the mean of first 4 Trials and Trial 5 by t test (Pre vs Post) 
+```{r}
+
+Day1ttest %>% group_by(Ttest) %>% summarise(count = n(),mean = mean (Time),sd =sd(Time))
+```
+
+```{r}
+boxplot(Time ~ Ttest, data = Day1ttest, main= "Object 4 headtime per group", xlab= "Ttest", ylab= "Time", col = "steelblue", border="black")
+```
+#distribution of the difference is normally distributed
+```{r}
+differences <- with (Day1ttest, Time[Ttest == "Pre"] - Time[Ttest =="Post"])
+shapiro.test(differences)
+```
+```{r}
+Pre_time=Day1ttest[Day1ttest$Ttest=="Pre", ] 
+
+Pre_average=aggregate(Time ~ AnimalID, data=Pre_time, FUN=mean)
+Pre_average$Ttest="Pre"
+Post_time=Day1ttest[Day1ttest$Ttest=="Post", ] 
+
+Post_time=Post_time %>% select(AnimalID, Time)
+Post_time$Ttest="Post"
+
+data_ttest=rbind(Pre_average,Post_time)
+sum(data_ttest$Ttest=="Pre")
+sum(data_ttest$Ttest=="Post")
+
+```
+```{r}
+t.test( Time ~ Ttest, data = data_ttest, paired = TRUE)
+```
+#Comparison between Day1 Trial 4 and 5
+```{r}
+time_4=Day1ttest[Day1ttest$Trial==4, ] 
+Post_time=Day1ttest[Day1ttest$Ttest=="Post", ] 
+data_45=rbind(time_4, Post_time)
+res.aov1 <- anova_test(data = data_45, Time ~ Genotype*Diet*Age_Cat*Sex,  wid=AnimalID, within = Trial) 
+get_anova_table(res.aov1)
+```
+# Day1 analysis
+```{r}
+dfDay1_Obj4$Diet<- as.factor (dfDay1_Obj4$Diet)
+dfDay1_Obj4$Sex<- as.factor (dfDay1_Obj4$Sex)
+dfDay1_Obj4$Genotype<-as.factor (dfDay1_Obj4$Genotype)
+dfDay1_Obj4$AnimalID<-as.factor (dfDay1_Obj4$AnimalID)
+dfDay1_Obj4$Age_Cat<-as.factor (dfDay1_Obj4$Age_Cat)
+dfDay1_Obj4$Stage<-as.factor (dfDay1_Obj4$Stage)
+dfDay1_Obj4$Trial<-as.factor (dfDay1_Obj4$Trial)
+options(digits= 10)
+dfDay1_Obj4$Time<-as.numeric (dfDay1_Obj4$Time)
+```
+
+
+dfDay1test <- subset(dfDay1_Obj4 %>% select(-Object,-Age_Cat,-Sex,-Stage))
+
+
+```{r}
+dfDay1_Obj4 %>% group_by(Diet,Trial) %>%  get_summary_stats(Time,type = "mean_sd")
+
+```
+
+#Visualization
+
+```{r}
+day1test <- ggboxplot (dfDay1_Obj4, x = "Trial", y = "Time", color = "Genotype", palette = "jco")+ facet_wrap(~Diet)
+day1test
+```
+
+```{r}
+dfDay1_Obj4 %>% group_by(Diet, Genotype,Trial) %>% identify_outliers(Time)
+
+```
+#shapiro test (normality assumption)
+dfDay2test %>% group_by(Diet,Trial) %>% shapiro_test(RI)
+
+```{r}
+ggqqplot(dfDay1_Obj4, "Time", ggtheme = theme_bw()) + facet_grid(Trial ~ Diet+Genotype)
+#labeller = "label_both")
+
+```
+
+#test
+
+Day1all <- subset(dfDay1_Obj4 %>% select(-Object,-Stage))
+
+
+```{r}
+res.aov1 <- anova_test(data = dfDay1_Obj4, Time ~ Genotype*Diet*Age_Cat*Sex,  wid=AnimalID, within = Trial) 
+get_anova_table(res.aov1)
+```
+
+#Anova test
+
+res.aov <- anova_test(data = dfDay1test, Time ~ Genotype*Diet,  wid=AnimalID, within = Trial) 
+get_anova_table(res.aov)
+
+
+#Effect of Genotype at each trial
+```{r}
+one.way<- dfDay1_Obj4%>% group_by(Trial)%>% anova_test(Time~Genotype,wid=AnimalID, within=Genotype) %>% get_anova_table() %>% adjust_pvalue(method="bonferroni")
+one.way
+  
+```
+#post-hoc tests for effect of Genotype
+```{r}
+postHoc1<-pairwise.t.test(dfDay1_Obj4$Time, dfDay1_Obj4$Genotype,p.adjust.method = "bonferroni")
+postHoc1
+```
+
+
+#Effect of Diet at each trial
+```{r}
+one.way<- dfDay1_Obj4%>% group_by(Trial)%>% anova_test(Time~Diet,wid=AnimalID, within=Diet) %>% get_anova_table() %>% adjust_pvalue(method="bonferroni")
+one.way
+  
+```
+#post-hoc tests for effect of Diet
+```{r}
+postHoc2<-pairwise.t.test(dfDay1_Obj4$Time, dfDay1_Obj4$Diet,p.adjust.method = "bonferroni")
+postHoc2
+```
+
+#Visualization
+```{r}
+ggboxplot(dfDay1_Obj4, x= "Genotype", y ="Time", color = "Diet", palette = "jco")+
+  stat_compare_means(method ="anova", label.y= 30)  
+```
+
+
+```{r}
+ggboxplot(dfDay1_Obj4, x= "Trial", y ="Time", color = "Diet", palette = "jco")+
+  stat_compare_means(method ="anova", label.y= 30) + facet_wrap(~Genotype) 
+```
+```{r}
+Day1<- stats:: aov(Time ~ Genotype*Diet*Trial*Sex*Age_Cat, data=dfDay1_Obj4)
+summary(Day1)
+TukeyHSD(Day1, "Trial")
+TukeyHSD(Day1, "Diet")
+TukeyHSD(Day1, "Genotype")
+TukeyHSD(Day1, "Sex")
+TukeyHSD(Day1, "Age_Cat")
+```
+
+
+
+#Visulizations
+#YM_O4 12 month control male
+```{r}
+ggerrorplot(dfYM_O4, x='Trial', y='Time', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 12 month male", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+ggline(dfYM_O4, x='Trial', y='Time', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 12 month male", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+```      
+
+#2. Object 4 Head Time over Day 1 
+ggerrorplot(dfD1O4YMC, x='Trial', y='Time', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 12 month control male", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD1O4YMC, x='Trial', y='Time', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 12 month control male", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+
+#ggsave(paste(outpath, 'Day1_Obj4headtime_5trials among YMC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+       
+#YF_O4 12 month control female
+```{r}
+ggerrorplot(dfYF_O4, x='Trial', y='Time', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 12 month female", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+ggline(dfYF_O4, x='Trial', y='Time', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 12 month female", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+
+```
+#ggsave(paste(outpath, 'Day1_Obj4headtime_5trials among YFC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#YMH 12 month male HFD
+
+#2. Object 4 Head Time over Day 1 
+ggerrorplot(dfD1O4YMH, x='Trial', y='Time', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 12 month male HFD", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD1O4YMH, x='Trial', y='Time', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 12 month HFD male", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+
+
+#ggsave(paste(outpath, 'Day1_Obj4headtime_5trials among YMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+#YFH 12 month Female HFD
+
+#2. Object 4 Head Time over Day 1 
+ggerrorplot(dfD1O4YFH, x='Trial', y='Time', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 12 month female HFD", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD1O4YFH, x='Trial', y='Time', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 12 month HFD female", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+
+#ggsave(paste(outpath, 'Day1_Obj4headtime_5trials among YFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+       
+#OM_O4 18 month male 
+```{r}
+ggerrorplot(dfOM_O4, x='Trial', y='Time', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 18 month male", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+ggline(dfOM_O4, x='Trial', y='Time', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 18 month male", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+
+```
+#ggsave(paste(outpath, 'Day1_Obj4headtime_5trials among OMC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+       
+#OF_O4 18 month female
+```{r}
+ggerrorplot(dfOF_O4, x='Trial', y='Time', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 18 month female", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+ggline(dfOF_O4, x='Trial', y='Time', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 18 month female", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+
+```
+#ggsave(paste(outpath, 'Day1_Obj4headtime_5trials among OFC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+       
+#Obj 4 headtime within 12 month include sex and diet
+```{r}
+ggerrorplot(dfY_O4, x='Trial', y='Time', ylim= c(0,10), color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 12 month ", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_grid(Diet~Sex)
+ggline(dfY_O4, x='Trial', y='Time', ylim= c(0,10),color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 12 month ", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_grid(Diet ~ Sex)
+```
+
+
+#Obj 4 headtime within 18 month include sex and diet
+```{r}
+ggerrorplot(dfO_O4, x='Trial', y='Time', ylim= c(0,10), color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 18 month ", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_grid(Diet~Sex)
+ggline(dfO_O4, x='Trial', y='Time', ylim= c(0,10),color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 18 month ", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))+ facet_grid(Diet ~ Sex)
+```
+
+#OMH 18 month male HFD
+
+#2. Object 4 Head Time over Day 1 
+ggerrorplot(dfD1O4OMH, x='Trial', y='Time', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 18 month HFD", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD1O4OMH, x='Trial', y='Time', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 18 month HFD male", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+#ggsave(paste(outpath, 'Day1_Obj4headtime_5trials among OMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+       
+#OFH 18 month female HFD
+
+#2. Object 4 Head Time over Day 1 
+ggerrorplot(dfD1O4OFH, x='Trial', y='Time', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 4 head time over Day 1 among 18 month HFD", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD1O4OFH, x='Trial', y='Time', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs (title = "Object 4 head time over Day 1 within 18 month HFD female", x = "Trial",y ="object 4 headtime (s)")+ theme(plot.title = element_text(hjust = 0.5))
+
+
+#ggsave(paste(outpath, 'Day1_Obj4headtime_5trials among OFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=4.5, unit=c("in"), dpi=300)
+
+#Day2 Day3 Day5 Analysis
+#Day2 object 2 RI
+```{r}
+dfDay2<-subset(dfAll, (Stage=='Day2_IdenticalObject' | Stage=='Day2_ShortTermMemory'))
+dfDay2_Obj2RI<-data.frame(dfDay2$Animal, dfDay2$APOE,dfDay2$Age_Cat, dfDay2$Sex,dfDay2$Diet, dfDay2$Stage, dfDay2$Trial, dfDay2$Object2_Day2_3_5.RI)
+dfDay2_Obj2RI<-cbind(dfDay2_Obj2RI, Object='Obj2')
+colnames(dfDay2_Obj2RI)<-c('AnimalID', 'Genotype', 'Age_Cat','Sex','Diet', 'Stage', 'Trial', 'RI', 'Object')
+```
+
+```{r}
+dfDay2_Obj2RI$Trial<-as.factor (dfDay2_Obj2RI$Trial)
+options(digits= 10)
+dfDay2_Obj2RI$RI<-as.numeric (dfDay2_Obj2RI$RI)
+```
+
+```{r}
+dfD2O2YM<-subset(dfDay2_Obj2RI, (Age_Cat=='Young') & (Sex=='Male')) 
+dfD2O2YF<-subset(dfDay2_Obj2RI, (Age_Cat=='Young') & (Sex=='Female'))
+
+dfD2O2OM<-subset(dfDay2_Obj2RI, (Age_Cat=='Old') & (Sex=='Male'))
+dfD2O2OF<-subset(dfDay2_Obj2RI, (Age_Cat=='Old') & (Sex=='Female'))
+
+dfD2O2Y<- rbind(dfD2O2YM,dfD2O2YF)
+dfD2O2O<- rbind(dfD2O2OM,dfD2O2OF)
+```
+
+#YM
+```{r}
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2YM, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among 12 month male", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+ggline(dfD2O2YM, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among 12 month male", xlab='Stages', ylab="Object 2 RI", legend='right')+ facet_wrap(~Diet)
+
+```
+
+#YMC
+
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2YMC, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among YMC", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD2O2YMC, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among YMC", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day2_Obj2RI_allgenotypes among YMC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=11, height=5, unit=c("in"), dpi=300)
+#YF
+```{r}
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2YF, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among 12 month female", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+ggline(dfD2O2YF, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among 12 month female", xlab='Stages', ylab="Object 2 RI", legend='right')+ facet_wrap(~Diet)
+
+```
+
+#YFC
+
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2YFC, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among YFC", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD2O2YMC, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among YFC", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day2_Obj2RI_allgenotypes among YFC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=11, height=5, unit=c("in"), dpi=300)
+#YMH
+
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2YMH, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among YMH", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD2O2YMH, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among YMH", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day2_Obj2RI_allgenotypes among YMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=11, height=5, unit=c("in"), dpi=300)
+#YFH
+
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2YFH, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among YFH", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD2O2YFH, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among YFH", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day2_Obj2RI_allgenotypes among YFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=11, height=5, unit=c("in"), dpi=300)
+
+#OM
+```{r}
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2OM, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among 18 month male", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+ggline(dfD2O2OM, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among 18 month male", xlab='Stages', ylab="Object 2 RI", legend='right')+ facet_wrap(~Diet)
+
+```
+#OF
+```{r}
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2OF, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among 18 month female", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))+ facet_wrap(~Diet)
+ggline(dfD2O2OF, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among 18 month female", xlab='Stages', ylab="Object 2 RI", legend='right')+ facet_wrap(~Diet)
+
+```
+
+#Within 12 month sex ~ diet
+#Objects 2 RI over Day 2 
+```{r}
+ggerrorplot(dfD2O2Y, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among 12 month", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))+ facet_grid(Sex ~ Diet)
+ggline(dfD2O2Y, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among 12 month", xlab='Stages', ylab="Object 2 RI", legend='right')+ facet_grid(Sex ~ Diet)
+
+```
+
+#Within 18 month sex ~ diet
+#Objects 2 RI over Day 2 
+```{r}
+ggerrorplot(dfD2O2O, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among 18 month", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))+ facet_grid(Sex ~ Diet)
+ggline(dfD2O2O, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among 18 month", xlab='Stages', ylab="Object 2 RI", legend='right')+ facet_grid(Sex ~ Diet)
+
+```
+
+#OMC
+
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2OMC, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among OMC", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD2O2OMC, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among OMC", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day2_Obj2RI_allgenotypes among OMC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=11, height=5, unit=c("in"), dpi=300)
+#OFC
+
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2OFC, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among OFC", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD2O2OFC, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among OFC", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+
+#ggsave(paste(outpath, 'Day2_Obj2RI_allgenotypes among OFC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=11, height=5, unit=c("in"), dpi=300)
+#OMH
+
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2OMH, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among OMH", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD2O2OMH, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among OMH", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day2_Obj2RI_allgenotypes among OMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=11, height=5, unit=c("in"), dpi=300)
+#OFH
+
+#3. Objects 2 RI over Day 2 
+ggerrorplot(dfD2O2OFH, x='Trial', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, 
+            legend='right', position=position_dodge(0.2))+ labs (title = "Object 2 RI over day 2 in all genotype among OFH", x = "Trial",y ="Object 2 RI")+ theme(plot.title = element_text(hjust = 0.5))
+ggline(dfD2O2OFH, x='Trial', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2 in all genotype among OFH", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day2_Obj2RI_allgenotypes among OFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=11, height=5, unit=c("in"), dpi=300)
+       
+#Day2 Analysis
+```{r}
+Day2ttest<- dfDay2_Obj2RI %>% mutate(Ttest = case_when(Stage == 'Day2_IdenticalObject' ~ "Pre", Stage == "Day2_ShortTermMemory" ~ "Post"))
+Day2Identical <- subset (Day2ttest, Ttest=="Pre")
+```
+
+#Obj_2 RI in Day2 Trial 1 to 3
+```{r}
+res.aov <- anova_test(data = Day2Identical ,  RI ~ Genotype*Diet*Age_Cat*Sex,  wid=AnimalID, within = Trial) 
+get_anova_table(res.aov)
+
+```
+#Comparison of the mean of first 3 Trials and Trial 4 by t test (Pre vs Post) 
+```{r}
+
+Day2ttest %>% group_by(Ttest) %>% summarise(count = n(),mean = mean (RI),sd =sd(RI))
+```       
+```{r}
+boxplot(RI ~ Ttest, data = Day2ttest, main= "Object 2 RI per group", xlab= "Ttest", ylab= "RI", col = "steelblue", border="black")
+```
+
+#distribution of the difference is normally distributed
+```{r}
+differences <- with (Day2ttest, RI[Ttest == "Pre"] - RI[Ttest =="Post"])
+shapiro.test(differences)
+```
+
+```{r}
+Pre_time=Day2ttest[Day2ttest$Ttest=="Pre", ] 
+
+Pre_average=aggregate(RI ~ AnimalID, data=Pre_time, FUN=mean)
+Pre_average$Ttest="Pre"
+Post_time=Day2ttest[Day2ttest$Ttest=="Post", ] 
+
+Post_time=Post_time %>% select(AnimalID, RI)
+Post_time$Ttest="Post"
+
+data_ttest=rbind(Pre_average,Post_time)
+sum(data_ttest$Ttest=="Pre")
+sum(data_ttest$Ttest=="Post")
+
+```
+
+```{r}
+t.test( RI ~ Ttest, data = data_ttest, paired = TRUE)
+```
+#Comparison between Day2 Trial 3 and 4
+```{r}
+time_3=Day2ttest[Day1ttest$Trial==3, ] 
+Post_time=Day2ttest[Day2ttest$Ttest=="Post", ] 
+data_34=rbind(time_3, Post_time)
+res.aov1 <- anova_test(data = data_34, RI ~ Genotype*Diet*Age_Cat*Sex,  wid=AnimalID, within = Trial) 
+get_anova_table(res.aov1)
+```
+
+#Comparison of Day 2 Trial 1 to 4 
+
+```{r}
+dfDay2_Obj2RI$Diet<- as.factor (dfDay2_Obj2RI$Diet)
+dfDay2_Obj2RI$Sex<- as.factor (dfDay2_Obj2RI$Sex)
+dfDay2_Obj2RI$Genotype<-as.factor (dfDay2_Obj2RI$Genotype)
+dfDay2_Obj2RI$AnimalID<-as.factor (dfDay2_Obj2RI$AnimalID)
+dfDay2_Obj2RI$Age_Cat<-as.factor (dfDay2_Obj2RI$Age_Cat)
+dfDay2_Obj2RI$Stage<-as.factor (dfDay2_Obj2RI$Stage)
+dfDay2_Obj2RI$Trial<-as.factor (dfDay2_Obj2RI$Trial)
+options(digits= 10)
+dfDay2_Obj2RI$RI<-as.numeric (dfDay2_Obj2RI$RI)
+```
+
+```{r}
+dfDay2_Obj2RI %>% group_by(Diet,Trial) %>%  get_summary_stats(RI,type = "mean_sd")
+
+```
+
+
+dfDay2test <- subset(dfDay2_Obj2RI %>% select(-Object,-Age_Cat,-Sex,-Stage))
+
+
+
+
+dfDay2test %>% group_by(Diet,Trial) %>%  get_summary_stats(RI,type = "mean_sd")
+
+
+#Visualization
+
+```{r}
+day2testb <- ggboxplot (dfDay2_Obj2RI, x = "Genotype", y = "RI", color = "Diet", palette = "jco")
+day2testb
+```
+
+```{r}
+dfDay2_Obj2RI %>% group_by(Diet, Trial) %>% identify_outliers(RI)
+
+```
+
+
+dfDay2test %>% group_by(Diet, Trial) %>% identify_outliers(RI)
+
+#shapiro test (normality assumption)
+dfDay2test %>% group_by(Diet,Trial) %>% shapiro_test(RI)
+
+```{r}
+ggqqplot(dfDay2_Obj2RI, "RI", ggtheme = theme_bw()) + facet_grid(Trial ~ Diet)
+#labeller = "label_both")
+
+```
+
+#Anova test
+```{r}
+res.aov <- anova_test(data = dfDay2_Obj2RI, RI ~ Genotype*Diet*Age_Cat*Sex,  wid=AnimalID, within = Trial) 
+get_anova_table(res.aov)
+```
+
+
+
+
+#post-hoc tests
+```{r}
+postHoc<-pairwise.t.test(dfDay2_Obj2RI$RI, dfDay2_Obj2RI$Genotype,p.adjust.method = "bonferroni")
+postHoc
+```
+
+
+
+#Visualization
+
+```{r}
+p<-ggboxplot(dfDay2_Obj2RI, x= "Genotype", y ="RI", color = "Diet", palette = "jco")+
+  stat_compare_means(method ="anova", label.y= 1.6) + stat_compare_means(label = "p.signif", method = "t.test", ref.group = "0.5")
+p
+```
+
+```{r}
+Day2<- stats:: aov(RI ~ Genotype*Diet*Trial*Sex*Age_Cat, data=dfDay2_Obj2RI)
+summary(Day2)
+TukeyHSD(Day2, "Trial")
+TukeyHSD(Day2, "Diet")
+TukeyHSD(Day2, "Genotype")
+TukeyHSD(Day2, "Sex")
+TukeyHSD(Day2, "Age_Cat")
+```
+
+
+
+#Day2 Day3 Day5 Object 2 RI analysis   
+
+```{r}
+dfDay2_Obj2RI$Diet<- as.factor (dfDay2_Obj2RI$Diet)
+dfDay2_Obj2RI$Sex<- as.factor (dfDay2_Obj2RI$Sex)
+dfDay2_Obj2RI$Genotype<-as.factor (dfDay2_Obj2RI$Genotype)
+dfDay2_Obj2RI$AnimalID<-as.factor (dfDay2_Obj2RI$AnimalID)
+dfDay2_Obj2RI$Age_Cat<-as.factor (dfDay2_Obj2RI$Age_Cat)
+dfDay2_Obj2RI$Stage<-as.factor (dfDay2_Obj2RI$Stage)
+dfDay2_Obj2RI$Trial<-as.factor (dfDay2_Obj2RI$Trial)
+options(digits= 10)
+dfDay2_Obj2RI$RI<-as.numeric (dfDay2_Obj2RI$RI)
+```
+
+#Take only Day2 Trial 1
+```{r}
+dfDay2_Obj2RI_T1<-subset(dfDay2_Obj2RI, (Trial=='1'))
+
+dfDay2_Obj2RI_ShortTerm<-subset(dfDay2_Obj2RI, (Trial=='4'))
+
+```
+dfD2O2YMC_T1<-subset(dfD2O2YMC,(Trial=='1'))
+dfD2O2YFC_T1<-subset(dfD2O2YFC,(Trial=='1'))
+dfD2O2YMH_T1<-subset(dfD2O2YMH,(Trial=='1'))
+dfD2O2YFH_T1<-subset(dfD2O2YFH,(Trial=='1'))
+dfD2O2OMC_T1<-subset(dfD2O2OMC,(Trial=='1'))
+dfD2O2OFC_T1<-subset(dfD2O2OFC,(Trial=='1'))
+dfD2O2OMH_T1<-subset(dfD2O2OMH,(Trial=='1'))
+dfD2O2OFH_T1<-subset(dfD2O2OFH,(Trial=='1'))
+dfD2O2YMC_ST<-subset(dfD2O2YMC,(Trial=='4'))
+dfD2O2YFC_ST<-subset(dfD2O2YFC,(Trial=='4'))
+dfD2O2YMH_ST<-subset(dfD2O2YMH,(Trial=='4'))
+dfD2O2YFH_ST<-subset(dfD2O2YFH,(Trial=='4'))
+dfD2O2OMC_ST<-subset(dfD2O2OMC,(Trial=='4'))
+dfD2O2OFC_ST<-subset(dfD2O2OFC,(Trial=='4'))
+dfD2O2OMH_ST<-subset(dfD2O2OMH,(Trial=='4'))
+dfD2O2OFH_ST<-subset(dfD2O2OFH,(Trial=='4'))
+```{r}
+dfDay3<-subset(dfAll, (Stage=='Day3_Novel Object2'))
+dfDay3_Obj2RI<-data.frame(dfDay3$Animal, dfDay3$APOE, dfDay3$Age_Cat,dfDay3$Sex,dfDay3$Diet, dfDay3$Stage, dfDay3$Trial, dfDay3$Object2_Day2_3_5.RI)
+dfDay3_Obj2RI<-cbind(dfDay3_Obj2RI, Object='Obj2')
+colnames(dfDay3_Obj2RI)<-c('AnimalID', 'Genotype','Age_Cat', 'Sex','Diet', 'Stage', 'Trial', 'RI', 'Object')
+```
+
+```{r}
+dfDay3_Obj2RI$Diet<- as.factor (dfDay3_Obj2RI$Diet)
+dfDay3_Obj2RI$Sex<- as.factor (dfDay3_Obj2RI$Sex)
+dfDay3_Obj2RI$Genotype<-as.factor (dfDay3_Obj2RI$Genotype)
+dfDay3_Obj2RI$AnimalID<-as.factor (dfDay3_Obj2RI$AnimalID)
+dfDay3_Obj2RI$Age_Cat<-as.factor (dfDay3_Obj2RI$Age_Cat)
+dfDay3_Obj2RI$Stage<-as.factor (dfDay3_Obj2RI$Stage)
+dfDay3_Obj2RI$Trial<-as.factor (dfDay3_Obj2RI$Trial)
+options(digits= 10)
+dfDay3_Obj2RI$RI<-as.numeric (dfDay3_Obj2RI$RI)
+```
+
+
+
+dfD3O2YMC<-subset(dfDay3_Obj2RI, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='Control'))
+dfD3O2YFC<-subset(dfDay3_Obj2RI, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='Control'))
+dfD3O2YMH<-subset(dfDay3_Obj2RI, (Age_Cat=='Young') &(Sex=='Male') & (Diet=='HFD'))
+dfD3O2YFH<-subset(dfDay3_Obj2RI, (Age_Cat=='Young') &(Sex=='Female') & (Diet=='HFD'))
+dfD3O2OMC<-subset(dfDay3_Obj2RI, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='Control'))
+dfD3O2OFC<-subset(dfDay3_Obj2RI, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='Control'))
+dfD3O2OMH<-subset(dfDay3_Obj2RI, (Age_Cat=='Old') &(Sex=='Male') & (Diet=='HFD'))
+dfD3O2OFH<-subset(dfDay3_Obj2RI, (Age_Cat=='Old') &(Sex=='Female') & (Diet=='HFD'))
+
+
+```{r}
+dfDay5<-subset(dfAll, (Stage=='Day5_NovelObject3'))
+dfDay5_Obj2RI<-data.frame(dfDay5$Animal, dfDay5$APOE, dfDay5$Age_Cat,dfDay5$Sex,dfDay5$Diet, dfDay5$Stage, dfDay5$Trial, dfDay5$Object2_Day2_3_5.RI)
+dfDay5_Obj2RI<-cbind(dfDay5_Obj2RI, Object='Obj2')
+colnames(dfDay5_Obj2RI)<-c('AnimalID', 'Genotype', 'Age_Cat', 'Sex','Diet', 'Stage', 'Trial', 'RI', 'Object')
+```
+
+```{r}
+dfDay5_Obj2RI$Diet<- as.factor (dfDay5_Obj2RI$Diet)
+dfDay5_Obj2RI$Sex<- as.factor (dfDay5_Obj2RI$Sex)
+dfDay5_Obj2RI$Genotype<-as.factor (dfDay5_Obj2RI$Genotype)
+dfDay5_Obj2RI$AnimalID<-as.factor (dfDay5_Obj2RI$AnimalID)
+dfDay5_Obj2RI$Age_Cat<-as.factor (dfDay5_Obj2RI$Age_Cat)
+dfDay5_Obj2RI$Stage<-as.factor (dfDay5_Obj2RI$Stage)
+dfDay5_Obj2RI$Trial<-as.factor (dfDay5_Obj2RI$Trial)
+options(digits= 10)
+dfDay5_Obj2RI$RI<-as.numeric (dfDay5_Obj2RI$RI)
+```
+
+dfD5O2YMC<-subset(dfDay5_Obj2RI, (Age_Cat=='Young') & (Sex=='Male') & (Diet=='Control'))
+dfD5O2YFC<-subset(dfDay5_Obj2RI, (Age_Cat=='Young') & (Sex=='Female') & (Diet=='Control'))
+dfD5O2YMH<-subset(dfDay5_Obj2RI, (Age_Cat=='Young') &(Sex=='Male') & (Diet=='HFD'))
+dfD5O2YFH<-subset(dfDay5_Obj2RI, (Age_Cat=='Young') &(Sex=='Female') & (Diet=='HFD'))
+dfD5O2OMC<-subset(dfDay5_Obj2RI, (Age_Cat=='Old') & (Sex=='Male') & (Diet=='Control'))
+dfD5O2OFC<-subset(dfDay5_Obj2RI, (Age_Cat=='Old') & (Sex=='Female') & (Diet=='Control'))
+dfD5O2OMH<-subset(dfDay5_Obj2RI, (Age_Cat=='Old') &(Sex=='Male') & (Diet=='HFD'))
+dfD5O2OFH<-subset(dfDay5_Obj2RI, (Age_Cat=='Old') &(Sex=='Female') & (Diet=='HFD'))
+
+```{r}
+dfFin<-rbind(dfDay2_Obj2RI_T1, dfDay2_Obj2RI_ShortTerm, dfDay3_Obj2RI, dfDay5_Obj2RI)
+```
+
+df235YMC<-rbind(dfD2O2YMC_T1,dfD2O2YMC_ST,dfD3O2YMC,dfD5O2YMC)
+df235YFC<-rbind(dfD2O2YFC_T1,dfD2O2YFC_ST,dfD3O2YFC,dfD5O2YFC)
+df235YMH<-rbind(dfD2O2YMH_T1,dfD2O2YMH_ST,dfD3O2YMH,dfD5O2YMH)
+df235YFH<-rbind(dfD2O2YFH_T1,dfD2O2YFH_ST,dfD3O2YFH,dfD5O2YFH)
+df235OMC<-rbind(dfD2O2OMC_T1,dfD2O2OMC_ST,dfD3O2OMC,dfD5O2OMC)
+df235OFC<-rbind(dfD2O2OFC_T1,dfD2O2OFC_ST,dfD3O2OFC,dfD5O2OFC)
+df235OMH<-rbind(dfD2O2OMH_T1,dfD2O2OMH_ST,dfD3O2OMH,dfD5O2OMH)
+df235OFH<-rbind(dfD2O2OFH_T1,dfD2O2OFH_ST,dfD3O2OFH,dfD5O2OFH)
+
+
+#Take Average of Day2 Trial 1 to 3
+```{r}
+Day2Final<- dfDay2_Obj2RI %>% mutate(Ttest = case_when(Stage == 'Day2_IdenticalObject' ~ "Pre", Stage == "Day2_ShortTermMemory" ~ "one hour"))
+```
+
+
+```{r}
+Pre_time_Final=Day2Final[Day2Final$Ttest=="Pre", ] 
+
+Pre_average_Final=aggregate(RI ~ AnimalID, data=Pre_time_Final, FUN=mean)
+Pre_average_Final$Ttest="Pre"
+Post_time_Final=Day2Final[Day2Final$Ttest=="one hour", ] 
+
+Post_time_Final=Post_time_Final %>% select(AnimalID, RI)
+Post_time_Final$Ttest="one hour"
+
+Day2Final1=rbind(Pre_average_Final,Post_time_Final)
+sum(Day2Final1$Ttest=="Pre")
+sum(Day2Final1$Ttest=="one hour")
+```
+
+
+```{r}
+Day3Final<- dfDay3_Obj2RI %>% mutate(Ttest = case_when(Stage == 'Day3_Novel Object2' ~ "24 hour"))
+sum(Day3Final$Ttest=="24 hour")
+Day3Final1<- Day3Final %>% select(-Object,-Stage,-Age_Cat, -Sex,-Genotype,-Trial,-Diet)
+```
+
+```{r}
+Day5Final<- dfDay5_Obj2RI %>% mutate(Ttest = case_when(Stage == 'Day5_NovelObject3' ~ "72 hour"))
+sum(Day5Final$Ttest=="72 hour")
+Day5Final1<- Day5Final %>% select(-Object,-Stage,-Age_Cat, -Sex,-Genotype,-Trial,-Diet)
+```
+
+
+```{r}
+dfFinal<-rbind(Day2Final1, Day3Final1, Day5Final1)
+```
+
+
+
+
+
+
+#4. Object 2 RI over Day 2 LP, Day 2 Short-term Memory, Day 3, and Day 5
+```{r}
+ggerrorplot(dfFin, x='Stage', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, legend='top', position=position_dodge(0.2)) + labs (title = "Object 2 RI over day 2,3,5 in all genotype", x = "Stages",y ="Object 2 RI") + theme(plot.title = element_text(hjust = 0.5))
+ggline(dfFin, x='Stage', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2,3,5 in all genotype", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+```
+#ggsave(paste(outpath, 'Day235_Obj2RI_allgenotype.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=5, unit=c("in"), dpi=300)
+       
+#YMC
+
+ggerrorplot(df235YMC, x='Stage', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, legend='top', position=position_dodge(0.2)) + labs (title = "Object 2 RI over day 2,3,5 in all genotype among YMC", x = "Stages",y ="Object 2 RI") + theme(plot.title = element_text(hjust = 0.5))
+ggline(df235YMC, x='Stage', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2,3,5 in all genotype among YMC", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day235_Obj2RI_allgenotype among YMC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=5, unit=c("in"), dpi=300)
+#YFC
+
+ggerrorplot(df235YFC, x='Stage', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, legend='top', position=position_dodge(0.2)) + labs (title = "Object 2 RI over day 2,3,5 in all genotype among YFC", x = "Stages",y ="Object 2 RI") + theme(plot.title = element_text(hjust = 0.5))
+ggline(df235YFC, x='Stage', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2,3,5 in all genotype among YFC", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+```
+#ggsave(paste(outpath, 'Day235_Obj2RI_allgenotype among YFC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=5, unit=c("in"), dpi=300)
+#YMH
+
+ggerrorplot(df235YMH, x='Stage', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, legend='top', position=position_dodge(0.2)) + labs (title = "Object 2 RI over day 2,3,5 in all genotype among YMH", x = "Stages",y ="Object 2 RI") + theme(plot.title = element_text(hjust = 0.5))
+ggline(df235YMH, x='Stage', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2,3,5 in all genotype among YMH", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day235_Obj2RI_allgenotype among YMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=5, unit=c("in"), dpi=300)
+#YFH
+ggerrorplot(df235YFH, x='Stage', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, legend='top', position=position_dodge(0.2)) + labs (title = "Object 2 RI over day 2,3,5 in all genotype among YFH", x = "Stages",y ="Object 2 RI") + theme(plot.title = element_text(hjust = 0.5))
+ggline(df235YFH, x='Stage', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2,3,5 in all genotype among YFH", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day235_Obj2RI_allgenotype among YFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=5, unit=c("in"), dpi=300)
+#OMC
+
+ggerrorplot(df235OMC, x='Stage', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, legend='top', position=position_dodge(0.2)) + labs (title = "Object 2 RI over day 2,3,5 in all genotype among OMC", x = "Stages",y ="Object 2 RI") + theme(plot.title = element_text(hjust = 0.5))
+ggline(df235OMC, x='Stage', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2,3,5 in all genotype among OMC", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day235_Obj2RI_allgenotype among OMC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=5, unit=c("in"), dpi=300)
+#OFC
+
+ggerrorplot(df235OFC, x='Stage', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, legend='top', position=position_dodge(0.2)) + labs (title = "Object 2 RI over day 2,3,5 in all genotype among OFC", x = "Stages",y ="Object 2 RI") + theme(plot.title = element_text(hjust = 0.5))
+ggline(df235OFC, x='Stage', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2,3,5 in all genotype among OFC", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day235_Obj2RI_allgenotype among OFC.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=5, unit=c("in"), dpi=300)
+#OMH
+
+ggerrorplot(df235OMH, x='Stage', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, legend='top', position=position_dodge(0.2)) + labs (title = "Object 2 RI over day 2,3,5 in all genotype among OMH", x = "Stages",y ="Object 2 RI") + theme(plot.title = element_text(hjust = 0.5))
+ggline(df235OMH, x='Stage', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2,3,5 in all genotype among OMH", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+```
+#ggsave(paste(outpath, 'Day235_Obj2RI_allgenotype among OMH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=5, unit=c("in"), dpi=300)
+#OFH
+
+ggerrorplot(df235OFH, x='Stage', y='RI', color='Genotype', fill='Genotype',
+            desc_stat='mean_se', palette=c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+            error.plot='errorbar', add='mean', point.size=1.5, legend='top', position=position_dodge(0.2)) + labs (title = "Object 2 RI over day 2,3,5 in all genotype among OFH", x = "Stages",y ="Object 2 RI") + theme(plot.title = element_text(hjust = 0.5))
+ggline(df235OFH, x='Stage', y='RI', color='Genotype', fill='Genotype', 
+       error.plot='errorbar', add='mean_se', palette = c('blueviolet','grey28', 'chartreuse1', 'red','darksalmon','yellow4'), size=1,
+       point.size=1.5)+ labs(title ="Object 2 RI over day 2,3,5 in all genotype among OFH", xlab='Stages', ylab="Object 2 RI", legend='right')
+
+#ggsave(paste(outpath, 'Day235_Obj2RI_allgenotype among OFH.pdf', sep=''), plot=last_plot(), device='pdf',
+       scale=1, width=8, height=5, unit=c("in"), dpi=300)
+       
+#Statistical Analysis
+#summary statistics
+dfFin %>% group_by(Diet, Genotype) %>% get_summary_stats(RI,type = "mean_sd")
+
+#Visualizations
+
+bxp <- ggboxplot (dfFin, x = "Genotype", y = "RI", color = "Diet", palette = "jco")
+bxp
+```
+#Check assumptions
+#Check extreme outliers
+dfFin %>% group_by(Diet, Genotype) %>% identify_outliers(RI)
+
+```
+#Normality assumption
+#pvalue should be greater than 0.05
+dfFin %>% group_by(Diet, Genotype) %>% shapiro_test(RI)
+
+```
+
+#Create QQ plot for each cell of design
+ggqqplot(dfFin, "RI", ggtheme = theme_bw()) + facet_grid(Genotype ~ Diet)
+#labeller = "label_both")
+
+#Computation
+#test
+
+dfDay2stat<- dfDay2_Obj2RI %>% select(-Object,-Stage,-Age_Cat, -Sex,-Genotype)%>%
+dplyr::mutate(RI1 = if_else(RI > 0,1,0))
+#
+Day2stat<- subset(dfDay2_Obj2RI, (Stage=='Day2_Identicalobject'))
+Day2stat<-data.frame   %>% group_by(Genotype)%>%
+  mutate (Trial1 = Trial %in% "1",Trial2 = Trial %in% "2",Trial3 = Trial %in% "3", )%>% select(-Trial, -Object)
+
+# Day1 analysis
+
+dfDay1_Obj4$Diet<- as.factor (dfDay1_Obj4$Diet)
+dfDay1_Obj4$Sex<- as.factor (dfDay1_Obj4$Sex)
+dfDay1_Obj4$Genotype<-as.factor (dfDay1_Obj4$Genotype)
+dfDay1_Obj4$AnimalID<-as.factor (dfDay1_Obj4$AnimalID)
+dfDay1_Obj4$Age_Cat<-as.factor (dfDay1_Obj4$Age_Cat)
+dfDay1_Obj4$Stage<-as.factor (dfDay1_Obj4$Stage)
+dfDay1_Obj4$Trial<-as.factor (dfDay1_Obj4$Trial)
+options(digits= 10)
+dfDay1_Obj4$Time<-as.numeric (dfDay1_Obj4$Time)
+
+
+dfDay1test <- subset(dfDay1_Obj4 %>% select(-Object,-Age_Cat,-Sex,-Stage))
+
+
+
+
+
+dfDay1test %>% group_by(Diet,Trial) %>%  get_summary_stats(Time,type = "mean_sd")
+
+
+#Visualization
+
+
+day1test <- ggboxplot (dfDay1test, x = "Trial", y = "Time", color = "Genotype", palette = "jco")+ facet_wrap(~Diet)
+day1test
+
+dfDay1test %>% group_by(Diet, Genotype,Trial) %>% identify_outliers(Time)
+
+#shapiro test (normality assumption)
+dfDay2test %>% group_by(Diet,Trial) %>% shapiro_test(RI)
+
+ggqqplot(dfDay1test, "Time", ggtheme = theme_bw()) + facet_grid(Trial ~ Diet+Genotype)
+#labeller = "label_both")
+
+
+#test
+
+Day1all <- subset(dfDay1_Obj4 %>% select(-Object,-Stage))
+
+
+res.aov1 <- anova_test(data = Day1all, Time ~ Genotype*Diet*Age_Cat*Sex,  wid=AnimalID, within = Trial) 
+get_anova_table(res.aov1)
+
+#Anova test
+
+res.aov <- anova_test(data = dfDay1test, Time ~ Genotype*Diet,  wid=AnimalID, within = Trial) 
+get_anova_table(res.aov)
+
+
+
+#Effect of Genotype at each trial
+one.way<- dfDay1test%>% group_by(Trial)%>% anova_test(Time~Genotype,wid=AnimalID, within=Genotype) %>% get_anova_table() %>% adjust_pvalue(method="bonferroni")
+one.way
+  
+#post-hoc tests for effect of Genotype
+
+postHoc1<-pairwise.t.test(dfDay1test$Time, dfDay1test$Genotype,p.adjust.method = "bonferroni")
+postHoc1
+
+
+#Effect of Diet at each trial
+one.way<- dfDay1test%>% group_by(Trial)%>% anova_test(Time~Diet,wid=AnimalID, within=Diet) %>% get_anova_table() %>% adjust_pvalue(method="bonferroni")
+one.way
+  
+#post-hoc tests for effect of Diet
+
+postHoc2<-pairwise.t.test(dfDay1test$Time, dfDay1test$Diet,p.adjust.method = "bonferroni")
+postHoc2
+
+#Visualization
+
+
+
+ggboxplot(dfDay1test, x= "Trial", y ="Time", color = "Diet", palette = "jco")+
+  stat_compare_means(method ="anova", label.y= 30) + facet_wrap(~Genotype) 
+
+Day1<- stats:: aov(Time ~ Genotype*Diet*Trial, data=dfDay1test)
+summary(Day1)
+TukeyHSD(Day1, "Trial")
+TukeyHSD(Day1, "Diet")
+TukeyHSD(Day1, "Genotype")
+
+
+
+
+                   
+# Day2 analysis
+
+dfDay2_Obj2RI$Diet<- as.factor (dfDay2_Obj2RI$Diet)
+dfDay2_Obj2RI$Sex<- as.factor (dfDay2_Obj2RI$Sex)
+dfDay2_Obj2RI$Genotype<-as.factor (dfDay2_Obj2RI$Genotype)
+dfDay2_Obj2RI$AnimalID<-as.factor (dfDay2_Obj2RI$AnimalID)
+dfDay2_Obj2RI$Age_Cat<-as.factor (dfDay2_Obj2RI$Age_Cat)
+dfDay2_Obj2RI$Stage<-as.factor (dfDay2_Obj2RI$Stage)
+dfDay2_Obj2RI$Trial<-as.factor (dfDay2_Obj2RI$Trial)
+options(digits= 10)
+dfDay2_Obj2RI$RI<-as.numeric (dfDay2_Obj2RI$RI)
+
+
+dfDay2_Obj2RI %>% group_by(Diet,Trial) %>%  get_summary_stats(RI,type = "mean_sd")
+
+
+
+dfDay2test <- subset(dfDay2_Obj2RI %>% select(-Object,-Age_Cat,-Sex,-Stage))
+
+
+
+
+dfDay2test %>% group_by(Diet,Trial) %>%  get_summary_stats(RI,type = "mean_sd")
+
+
+#Visualization
+
+
+day2testb <- ggboxplot (dfDay2_Obj2RI, x = "Genotype", y = "RI", color = "Diet", palette = "jco")
+day2testb
+
+
+dfDay2_Obj2RI %>% group_by(Diet, Trial) %>% identify_outliers(RI)
+
+
+
+dfDay2test %>% group_by(Diet, Trial) %>% identify_outliers(RI)
+
+#shapiro test (normality assumption)
+dfDay2test %>% group_by(Diet,Trial) %>% shapiro_test(RI)
+
+
+ggqqplot(dfDay2_Obj2RI, "RI", ggtheme = theme_bw()) + facet_grid(Trial ~ Diet)
+#labeller = "label_both")
+
+
+#Anova test
+
+res.aov <- anova_test(data = dfDay2_Obj2RI, RI ~ Genotype*Diet*Age_Cat*Sex,  wid=AnimalID, within = Trial) 
+get_anova_table(res.aov)
+
+
+
+
+
+#post-hoc tests
+
+postHoc<-pairwise.t.test(dfDay2_Obj2RI$RI, dfDay2_Obj2RI$Genotype,p.adjust.method = "bonferroni")
+postHoc
+
+
+
+
+#Visualization
+
+
+p<-ggboxplot(dfDay2_Obj2RI, x= "Genotype", y ="RI", color = "Diet", palette = "jco")+
+  stat_compare_means(method ="anova", label.y= 1.6) + stat_compare_means(label = "p.signif", method = "t.test", ref.group = "0.5")
+p
+
+#Adding Pairwise Pvalue test
+
+postHoc <- postHoc %>% mutate(y.position = c(1.2,1.3,1.4,1.5,1.6,1.7,1.8)) p + stat_pvalue_manual(postHoc, label = "p.adj")
+
+
+
+
+
+
+
+
+  
+
+
+lm(data=dfDay2test, RI ~ Genotype + Diet)
+
+
+
+
+
+#Anna
+
+temp <- subset(dfDay2_Obj2RI, Trial %in% "1")
+testMethod<-t.test(RI ~ Sex, data = temp)
+
+
+
+
+mytTable<-as_tibble(
+  cbind(testMethod$data.name, testMethod$statistic, testMethod$p.value, testMethod$parameter[1], nrow(temp))
+)
+
+
+
+mycolnames<-c('contrast', 'statistic', 'p.value', 'df', 'observations')
+
+myfile<-paste(outpath,'Day2Trial1stat.csv')
+write.table(mytTable, file=myfile, col.names = mycolnames , sep = "," , row.names = F,append=TRUE)
+
+
+
